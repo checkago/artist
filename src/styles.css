@@ -37,7 +37,7 @@ img { max-width: 100%; }
 }
 .page { padding: 108px 0 72px; }
 #sound, #covers, #releases, #contact, #admin-releases { scroll-margin-top: 100px; }
-.page > * + * { margin-top: 28px; }
+.page > * + * { margin-top: 40px; }
 
 .nav {
   position: fixed;
@@ -414,7 +414,7 @@ h1 {
   border: 0;
 }
 .cta { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 40px; flex-wrap: wrap; }
-.hero + .wrap { margin-top: 52px; }
+.hero + .wrap { margin-top: 64px; }
 .vk-cta {
   position: relative;
   isolation: isolate;
