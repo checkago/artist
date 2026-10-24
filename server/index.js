@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import multer from 'multer'
+import { openDatabase } from './db.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dataDir = path.join(root, 'data')
@@ -15,7 +16,7 @@ const host = process.env.HOST || '127.0.0.1'
 const password = process.env.ADMIN_PASSWORD || 'checkago'
 const secret = process.env.ADMIN_SECRET || 'checkago-cookie-secret'
 const cookieName = 'cg_admin'
-const platforms = ['vk', 'vkmusic', 'yandex', 'spotify', 'apple', 'youtube', 'zvuk', 'bandlink', 'other']
+const platforms = ['vk', 'vkmusic', 'yandex', 'spotify', 'apple', 'youtube', 'zvuk', 'wink', 'mts', 'bandlink', 'other']
 
 fs.mkdirSync(dataDir, { recursive: true })
 fs.mkdirSync(uploadsDir, { recursive: true })
@@ -57,6 +58,7 @@ function seed() {
       upcomingAt: '',
       upcomingLabel: 'До выхода',
       upcomingCover: '',
+      upcomingReleaseId: '',
       portrait: '/media/chimp.jpg',
       portraitAlt: 'CHECKago: шимпанзе у микрофона, наушники и неон',
       soundKicker: 'Как собран трек',
@@ -102,13 +104,10 @@ function seed() {
   }
 }
 
+const store = openDatabase({ dataDir, dataFile, seed })
+
 function readDb() {
-  if (!fs.existsSync(dataFile)) {
-    const initial = seed()
-    fs.writeFileSync(dataFile, JSON.stringify(initial, null, 2))
-    return initial
-  }
-  return JSON.parse(fs.readFileSync(dataFile, 'utf8'))
+  return store.readSite()
 }
 
 let writeQueue = Promise.resolve()
@@ -117,7 +116,7 @@ function updateDb(mutator) {
   const run = writeQueue.then(() => {
     const data = readDb()
     const next = mutator(data) || data
-    fs.writeFileSync(dataFile, JSON.stringify(next, null, 2))
+    store.writeSite(next)
     return next
   })
   writeQueue = run.catch(() => {})
@@ -137,8 +136,54 @@ function withDefaults(profile = {}) {
   return next
 }
 
+function revealDue(data) {
+  const at = data.profile?.upcomingAt
+  const publicId = data.profile?.upcomingReleaseId
+  if (!at || !publicId) return data
+  const time = new Date(at).getTime()
+  if (!Number.isFinite(time) || time > Date.now()) return data
+  const index = data.releases.findIndex((item) => item.publicId === publicId && !item.draft && !item.revealed)
+  if (index < 0) return data
+  const releases = data.releases.slice()
+  releases[index] = { ...releases[index], revealed: true }
+  const next = { ...data, releases }
+  store.writeSite(next)
+  return next
+}
+
+function publicRelease(release) {
+  return {
+    id: release.publicId,
+    title: release.title,
+    artist: release.artist,
+    year: release.year,
+    tracks: release.tracks,
+    cover: release.cover,
+    links: release.links,
+    sort: release.sort,
+  }
+}
+
 function publicDb(data) {
-  return { profile: withDefaults(data.profile), releases: sortReleases(data.releases || []) }
+  const visible = (data.releases || []).filter((release) => (
+    !release.draft && release.publicId && (release.visibleWithoutAnnouncement || release.revealed)
+  ))
+  const profile = withDefaults(data.profile)
+  const linked = (data.releases || []).find((release) => (
+    release.publicId && release.publicId === profile.upcomingReleaseId && !release.draft
+  ))
+  if (linked) profile.upcomingTracks = linked.tracks || 1
+  return { profile, releases: sortReleases(visible).map(publicRelease) }
+}
+
+function releaseFlags(input, existing) {
+  let draft = Boolean(input?.draft)
+  let visibleWithoutAnnouncement = Boolean(input?.visibleWithoutAnnouncement)
+  if (visibleWithoutAnnouncement) draft = false
+  if (draft) visibleWithoutAnnouncement = false
+  let publicId = existing?.publicId || ''
+  if (!draft && !publicId) publicId = crypto.randomUUID()
+  return { draft, visibleWithoutAnnouncement, publicId, revealed: Boolean(existing?.revealed) }
 }
 
 function text(value, max) {
@@ -215,6 +260,8 @@ function cleanProfile(input) {
   if (upcomingAt && Number.isNaN(new Date(upcomingAt).getTime())) return { error: 'Проверьте дату выхода релиза' }
   const upcomingCover = cleanSrc(input?.upcomingCover)
   if (text(input?.upcomingCover, 500) && upcomingCover === null) return { error: 'Проверьте обложку релиза' }
+  const upcomingReleaseId = text(input?.upcomingReleaseId, 80)
+  if (upcomingReleaseId && !/^[0-9a-f-]{36}$/i.test(upcomingReleaseId)) return { error: 'Проверьте релиз анонса' }
   return {
     profile: {
       name,
@@ -243,6 +290,7 @@ function cleanProfile(input) {
       upcomingAt,
       upcomingLabel: text(input?.upcomingLabel, 40) || 'До выхода',
       upcomingCover: upcomingCover || '',
+      upcomingReleaseId,
       portrait: portrait || '',
       portraitAlt: text(input?.portraitAlt, 200),
       soundKicker: text(input?.soundKicker, 80),
@@ -287,12 +335,14 @@ function cleanRelease(input, cover) {
   const title = text(input?.title, 120)
   const artist = text(input?.artist, 120)
   const year = Number(input?.year)
+  const tracks = Number(input?.tracks)
   if (!title || !artist) return { error: 'Нужны название и исполнитель' }
   if (!Number.isInteger(year) || year < 1950 || year > 2100) return { error: 'Год указан неверно' }
+  if (!Number.isInteger(tracks) || tracks < 1 || tracks > 99) return { error: 'Укажите число треков от 1 до 99' }
   if (!cover) return { error: 'Добавьте обложку' }
   const links = cleanLinks(input?.links)
   if (links.error) return links
-  return { release: { title, artist, year, cover, links: links.links } }
+  return { release: { title, artist, year, tracks, cover, links: links.links } }
 }
 
 function signToken() {
@@ -412,7 +462,12 @@ app.disable('x-powered-by')
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/site', (_req, res) => {
-  res.json(publicDb(readDb()))
+  res.json(publicDb(revealDue(readDb())))
+})
+
+app.get('/api/admin/site', requireAdmin, (_req, res) => {
+  const data = revealDue(readDb())
+  res.json({ profile: withDefaults(data.profile), releases: sortReleases(data.releases) })
 })
 
 app.get('/api/session', (req, res) => {
@@ -445,6 +500,13 @@ app.put('/api/profile', requireAdmin, asyncRoute(async (req, res) => {
     res.status(400).json({ error: cleaned.error })
     return
   }
+  if (cleaned.profile.upcomingReleaseId) {
+    const known = readDb().releases.some((item) => item.publicId === cleaned.profile.upcomingReleaseId && !item.draft)
+    if (!known) {
+      res.status(400).json({ error: 'Для анонса нужен релиз с ID, не черновик' })
+      return
+    }
+  }
   const data = await updateDb((current) => ({ ...current, profile: cleaned.profile }))
   res.json({ profile: data.profile })
 }))
@@ -457,7 +519,7 @@ app.post('/api/releases', requireAdmin, withUpload, asyncRoute(async (req, res) 
     res.status(400).json({ error: cleaned.error })
     return
   }
-  const release = { id: crypto.randomUUID(), ...cleaned.release, sort: 0 }
+  const release = { id: crypto.randomUUID(), ...cleaned.release, sort: 0, ...releaseFlags(readPayload(req), null) }
   const data = await updateDb((current) => {
     const releases = sortReleases(current.releases)
     releases.unshift(release)
@@ -488,7 +550,7 @@ app.put('/api/releases/:id', requireAdmin, withUpload, asyncRoute(async (req, re
   const data = await updateDb((db) => ({
     ...db,
     releases: db.releases.map((item) => (
-      item.id === existing.id ? { ...item, ...cleaned.release } : item
+      item.id === existing.id ? { ...item, ...cleaned.release, ...releaseFlags(readPayload(req), existing) } : item
     )),
   }))
   res.json({ release: data.releases.find((item) => item.id === existing.id) })

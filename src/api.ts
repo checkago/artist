@@ -28,6 +28,8 @@ export type Profile = {
   upcomingAt: string
   upcomingLabel: string
   upcomingCover: string
+  upcomingReleaseId: string
+  upcomingTracks?: number
   portrait: string
   portraitAlt: string
   soundKicker: string
@@ -58,6 +60,8 @@ export type PlatformId =
   | 'apple'
   | 'youtube'
   | 'zvuk'
+  | 'wink'
+  | 'mts'
   | 'bandlink'
   | 'other'
 
@@ -68,9 +72,14 @@ export type Release = {
   title: string
   artist: string
   year: number
+  tracks: number
   cover: string
   links: ReleaseLink[]
   sort: number
+  draft?: boolean
+  visibleWithoutAnnouncement?: boolean
+  publicId?: string
+  revealed?: boolean
 }
 
 export const PLATFORMS: { id: PlatformId; label: string }[] = [
@@ -81,12 +90,21 @@ export const PLATFORMS: { id: PlatformId; label: string }[] = [
   { id: 'apple', label: 'Apple Music' },
   { id: 'youtube', label: 'YouTube' },
   { id: 'zvuk', label: 'Звук' },
+  { id: 'wink', label: 'WINK Music' },
+  { id: 'mts', label: 'МТС Music' },
   { id: 'bandlink', label: 'BandLink' },
   { id: 'other', label: 'Ссылка' },
 ]
 
 export function platformLabel(id: string): string {
   return PLATFORMS.find((item) => item.id === id)?.label ?? 'Ссылка'
+}
+
+export function releaseKind(tracks: number): string {
+  const count = Number(tracks) || 1
+  if (count <= 1) return 'Сингл'
+  if (count <= 6) return 'Мини-альбом (EP)'
+  return 'Альбом'
 }
 
 export function safeHref(url: string): string | undefined {
@@ -108,6 +126,10 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function getSite() {
   return request<{ profile: Profile; releases: Release[] }>('/api/site')
+}
+
+export function getAdminSite() {
+  return request<{ profile: Profile; releases: Release[] }>('/api/admin/site')
 }
 
 export function getSession() {
@@ -142,7 +164,7 @@ export function saveProfile(profile: Profile) {
 
 export function saveRelease(
   id: string | null,
-  payload: { title: string; artist: string; year: number; links: ReleaseLink[] },
+  payload: { title: string; artist: string; year: number; tracks: number; links: ReleaseLink[]; draft: boolean; visibleWithoutAnnouncement: boolean },
   file: File | null,
 ) {
   const body = new FormData()

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getSite, platformLabel, safeHref, type Picture, type Profile, type Release, type TextBlock } from '../api'
+import { getSite, platformLabel, releaseKind, safeHref, type Picture, type Profile, type Release, type TextBlock } from '../api'
 
 function faClass(code: string) {
   const tokens = code.split(/\s+/).filter((token) => /^fa[a-z0-9-]*$/i.test(token))
@@ -68,15 +68,19 @@ function FlipCard({ value }: { value: string }) {
 
 const arrivedWords = ['пришло', 'время', 'насладиться', 'звуком']
 
-function plainTitle(value: string) {
-  return value.trim().toLowerCase().replace(/[«»"]/g, '')
-}
-
-function ReleaseRail({ profile, releases }: { profile: Profile; releases: Release[] }) {
+function ReleaseRail({ profile, onEnded }: { profile: Profile; onEnded: () => void }) {
   const target = profile.upcomingAt ? releaseDate(profile.upcomingAt) : null
   const targetMs = target?.getTime() ?? Number.NaN
   const [now, setNow] = useState(() => Date.now())
   const [coverOpen, setCoverOpen] = useState(false)
+  const endedNow = Boolean(target) && targetMs <= now
+  const seenEnded = useRef(endedNow)
+
+  useEffect(() => {
+    if (!endedNow || seenEnded.current) return
+    seenEnded.current = true
+    onEnded()
+  }, [endedNow, onEnded])
 
   useEffect(() => {
     if (!Number.isFinite(targetMs) || targetMs <= Date.now()) return
@@ -89,7 +93,7 @@ function ReleaseRail({ profile, releases }: { profile: Profile; releases: Releas
   }, [targetMs])
 
   if (!target) return null
-  const ended = targetMs <= now
+  const ended = endedNow
 
   const total = Math.floor((targetMs - now) / 1000)
   const parts = [
@@ -102,11 +106,11 @@ function ReleaseRail({ profile, releases }: { profile: Profile; releases: Releas
   const badge = profile.upcomingBadge.trim() || 'Новый релиз'
   const label = profile.upcomingLabel.trim() || 'До выхода'
   const title = profile.upcomingTitle.trim().replace(/^[«"]|[»"]$/g, '')
+  const kind = profile.upcomingReleaseId && title ? releaseKind(profile.upcomingTracks ?? 1) : ''
   const cover = (profile.upcomingCover ?? '').trim()
   const coverAlt = title ? `Обложка «${title}»` : 'Обложка релиза'
   const units = ['дней', 'часов', 'мин', 'сек']
-  const release = releases.find((item) => plainTitle(item.title) === plainTitle(title))
-  const releaseHref = release ? `#release-${release.id}` : '#releases'
+  const releaseHref = profile.upcomingReleaseId ? `#release-${profile.upcomingReleaseId}` : '#releases'
 
   return (
     <section className="rail glow-run" aria-label={badge}>
@@ -124,7 +128,10 @@ function ReleaseRail({ profile, releases }: { profile: Profile; releases: Releas
           </svg>
           {badge}
         </span>
-        <p className="rail-headline">{title ? `«${title}»` : 'Выход'}</p>
+        <p className="rail-headline">
+          <span>{title ? `«${title}»` : 'Выход'}</span>
+          {kind && <span className="rail-kind">{kind}</span>}
+        </p>
         <p className="rail-date">{when}</p>
         {profile.upcomingText.trim() && <p className="rail-desc">{profile.upcomingText}</p>}
         </div>
@@ -154,7 +161,7 @@ function ReleaseRail({ profile, releases }: { profile: Profile; releases: Releas
         )}
       </div>
       <span className="sr-only">
-        {title ? `${title}. ` : ''}
+        {title ? `${title}${kind ? `, ${kind}` : ''}. ` : ''}
         {profile.upcomingText.trim() ? `${profile.upcomingText.trim()} ` : ''}
         {ended ? 'Пришло время насладиться звуком.' : `Выход ${when}.`}
       </span>
@@ -187,6 +194,7 @@ function ReleaseCard({ release }: { release: Release }) {
       <img src={release.cover} alt={`Обложка «${release.title}»`} />
       <div>
         <h3>{release.title}</h3>
+        <p className="release-kind">{releaseKind(release.tracks)}</p>
         <p className="release-meta">{release.artist} · {release.year}</p>
         {links.length > 0 ? (
           <div className="release-links">
@@ -298,7 +306,12 @@ export default function Home() {
                   ))}
                 </div>
               )}
-              <ReleaseRail profile={profile} releases={releases} />
+              <ReleaseRail profile={profile} onEnded={() => {
+                getSite().then((data) => {
+                  setProfile(data.profile)
+                  setReleases(data.releases)
+                }).catch(() => {})
+              }} />
               <div className="cta">
                 {yandex && profile.yandexButton && (
                   <a className="vk-cta ym-cta" href={yandex} target="_blank" rel="noreferrer">

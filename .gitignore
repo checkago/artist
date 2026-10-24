@@ -3,3 +3,6 @@ dist
 .env
 .env.*
 *.log
+data/*.db
+data/*.db-wal
+data/*.db-shm

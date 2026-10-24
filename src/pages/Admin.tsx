@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   PLATFORMS,
   deleteRelease,
+  getAdminSite,
   getSession,
-  getSite,
   login,
   logout,
   moveRelease,
   platformLabel,
+  releaseKind,
   saveProfile,
   saveRelease,
   uploadMedia,
@@ -24,9 +25,12 @@ type Draft = {
   title: string
   artist: string
   year: string
+  tracks: string
   links: ReleaseLink[]
   file: File | null
   preview: string
+  isDraft: boolean
+  visibleWithoutAnnouncement: boolean
 }
 
 const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'))
@@ -173,14 +177,25 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
+function withHttps(url: string): string {
+  const value = url.trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  if ('https://'.startsWith(value.toLowerCase()) || 'http://'.startsWith(value.toLowerCase())) return url
+  return `https://${value}`
+}
+
 const emptyDraft = (): Draft => ({
   id: null,
   title: '',
   artist: 'CHECKago',
   year: String(new Date().getFullYear()),
+  tracks: '1',
   links: [{ platform: 'vk', url: '' }],
   file: null,
   preview: '',
+  isDraft: true,
+  visibleWithoutAnnouncement: false,
 })
 
 export default function Admin() {
@@ -206,8 +221,10 @@ export default function Admin() {
   }
 
   async function load() {
-    const [session, site] = await Promise.all([getSession(), getSite()])
+    const session = await getSession()
     setAuthed(session.ok)
+    if (!session.ok) return
+    const site = await getAdminSite()
     setProfile(site.profile)
     setReleases(site.releases)
   }
@@ -296,9 +313,12 @@ export default function Admin() {
       title: release.title,
       artist: release.artist,
       year: String(release.year),
+      tracks: String(release.tracks || 1),
       links: release.links.length > 0 ? release.links.map((link) => ({ ...link })) : [{ platform: 'vk', url: '' }],
       file: null,
       preview: release.cover,
+      isDraft: Boolean(release.draft),
+      visibleWithoutAnnouncement: Boolean(release.visibleWithoutAnnouncement),
     })
     setReleaseError('')
     setReleaseNote('')
@@ -332,23 +352,34 @@ export default function Admin() {
     })
   }
 
+  function onLinkUrl(index: number, input: HTMLInputElement) {
+    const raw = input.value
+    const next = withHttps(raw)
+    const cursor = input.selectionStart ?? next.length
+    updateLink(index, { url: next })
+    if (next === raw) return
+    const pos = Math.max(0, cursor + next.length - raw.length)
+    requestAnimationFrame(() => input.setSelectionRange(pos, pos))
+  }
+
   async function onSaveRelease(event: FormEvent) {
     event.preventDefault()
     if (!draft) return
     const title = draft.title.trim()
     const artist = draft.artist.trim()
     const year = Number(draft.year)
-    const links = draft.links.map((link) => {
-      const url = link.url.trim()
-      if (!url || /^https?:\/\//i.test(url)) return { ...link, url }
-      return { ...link, url: `https://${url}` }
-    })
+    const tracks = Number(draft.tracks)
+    const links = draft.links.map((link) => ({ ...link, url: withHttps(link.url) }))
     if (!title || !artist) {
       setReleaseError('Нужны название и исполнитель')
       return
     }
     if (!Number.isInteger(year) || year < 1950 || year > 2100) {
       setReleaseError('Год указан неверно')
+      return
+    }
+    if (!Number.isInteger(tracks) || tracks < 1 || tracks > 99) {
+      setReleaseError('Укажите число треков от 1 до 99')
       return
     }
     if (!draft.id && !draft.file) {
@@ -359,13 +390,23 @@ export default function Admin() {
     setReleaseError('')
     setReleaseNote('')
     try {
-      await saveRelease(draft.id, { title, artist, year, links }, draft.file)
+      const result = await saveRelease(draft.id, {
+        title,
+        artist,
+        year,
+        tracks,
+        links,
+        draft: draft.isDraft,
+        visibleWithoutAnnouncement: draft.visibleWithoutAnnouncement,
+      }, draft.file)
       if (draft.preview.startsWith('blob:')) URL.revokeObjectURL(draft.preview)
-      const savedTitle = title
+      const saved = result.release
       setDraft(null)
-      const site = await getSite()
+      const site = await getAdminSite()
       setReleases(site.releases)
-      setReleaseNote(`«${savedTitle}» сохранён. Карточка в списке выше и на главной.`)
+      if (saved.draft) setReleaseNote(saved.publicId ? `«${saved.title}» снова черновик. На сайте его нет, ID сохранён: ${saved.publicId}` : `«${saved.title}» сохранён как черновик. На сайте его нет, ID появится после снятия галочки.`)
+      else if (saved.visibleWithoutAnnouncement) setReleaseNote(`«${saved.title}» на сайте. ID: ${saved.publicId}`)
+      else setReleaseNote(`«${saved.title}» получил ID ${saved.publicId}. На сайте появится, когда закончится таймер его анонса.`)
       document.getElementById('admin-releases')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch (reason) {
       setReleaseError(reason instanceof Error ? reason.message : 'Не сохранилось')
@@ -453,8 +494,10 @@ export default function Admin() {
               <img src={release.cover} alt="" />
               <div>
                 <strong>{release.title}</strong>
+                <p className="release-kind">{releaseKind(release.tracks || 1)}</p>
                 <p className="release-meta">{release.artist} · {release.year}</p>
                 <p className="note">{release.links.map((link) => platformLabel(link.platform)).join(' · ') || 'Без ссылок'}</p>
+                <p className="note">{release.draft ? (release.publicId ? `Черновик · ${release.publicId}` : 'Черновик') : release.visibleWithoutAnnouncement || release.revealed ? `На сайте · ${release.publicId}` : `Ждёт анонса · ${release.publicId}`}</p>
               </div>
               <div className="release-tools">
                 <button className="btn btn-ghost btn-small" type="button" disabled={index === 0} onClick={() => onMove(release.id, 'up')}>Вверх</button>
@@ -472,12 +515,13 @@ export default function Admin() {
                 <label>Название<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required /></label>
                 <label>Исполнитель<input value={draft.artist} onChange={(event) => setDraft({ ...draft, artist: event.target.value })} required /></label>
                 <label>Год<input inputMode="numeric" value={draft.year} onChange={(event) => setDraft({ ...draft, year: event.target.value })} required /></label>
+                <label>Треков<input inputMode="numeric" value={draft.tracks} onChange={(event) => setDraft({ ...draft, tracks: event.target.value })} required /></label>
                 <label>
                   {draft.id ? 'Новая обложка' : 'Обложка'}
                   <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
                 </label>
               </div>
-              <p className="note">{draft.id ? 'Файл нужен только если меняете картинку.' : 'Без файла релиз не сохранится. Ссылку можно вставить и без https://.'}</p>
+              <p className="note">{draft.id ? 'Файл нужен только если меняете картинку. https:// подставится сам.' : 'Без файла релиз не сохранится. https:// подставится сам.'}</p>
               {draft.preview && <img src={draft.preview} alt="" style={{ width: 180, borderRadius: 12 }} />}
               <div className="stack">
                 {draft.links.map((link, index) => (
@@ -485,12 +529,39 @@ export default function Admin() {
                     <select value={link.platform} onChange={(event) => updateLink(index, { platform: event.target.value as PlatformId })}>
                       {PLATFORMS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                     </select>
-                    <input placeholder="https:// или адрес площадки" value={link.url} onChange={(event) => updateLink(index, { url: event.target.value })} />
+                    <input placeholder="адрес площадки" value={link.url} onChange={(event) => onLinkUrl(index, event.target)} />
                     <button className="btn btn-ghost btn-small" type="button" onClick={() => setDraft({ ...draft, links: draft.links.filter((_, linkIndex) => linkIndex !== index) })}>×</button>
                   </div>
                 ))}
                 <button className="btn btn-ghost btn-small" type="button" onClick={() => setDraft({ ...draft, links: [...draft.links, { platform: 'yandex', url: '' }] })}>Площадка</button>
               </div>
+              <div className="check-row">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={draft.isDraft}
+                    onChange={(event) => setDraft({
+                      ...draft,
+                      isDraft: event.target.checked,
+                      visibleWithoutAnnouncement: event.target.checked ? false : draft.visibleWithoutAnnouncement,
+                    })}
+                  />
+                  Черновик
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={draft.visibleWithoutAnnouncement}
+                    onChange={(event) => setDraft({
+                      ...draft,
+                      visibleWithoutAnnouncement: event.target.checked,
+                      isDraft: event.target.checked ? false : draft.isDraft,
+                    })}
+                  />
+                  Виден без анонса
+                </label>
+              </div>
+              <p className="note">Черновик виден только здесь и не получает ID. Без галочки релиз получает ID для анонса и выходит на сайт, когда таймер этого анонса закончится. «Виден без анонса» публикует его сразу.</p>
               {releaseError && <p className="error">{releaseError}</p>}
               <div className="release-tools">
                 <button className="btn btn-primary" type="submit" disabled={busy}>{draft.id ? 'Сохранить релиз' : 'Добавить релиз'}</button>
@@ -564,11 +635,19 @@ export default function Admin() {
             <div className="admin-blocks" hidden={tab !== 'upcoming'}>
             <section className="admin-block">
             <h2>Ближайший релиз</h2>
-            <p className="status">Пустая дата прячет блок. Когда время наступит, вместо таймера появится надпись и останется, пока не зададите новый анонс.</p>
+            <p className="status">Пустая дата прячет блок. Когда время наступит, вместо таймера появится надпись и останется, пока не зададите новый анонс. В списке «Релиз» выберите карточку с ID: по окончании таймера она появится на сайте, а надпись будет вести на неё.</p>
             {profile.upcomingCover && <img src={profile.upcomingCover} alt="" style={{ width: 120, borderRadius: 14 }} />}
             <div className="admin-grid">
               <label>Бейдж<input value={profile.upcomingBadge ?? ''} onChange={(event) => patchProfile({ upcomingBadge: event.target.value })} /></label>
               <label>Название<input value={profile.upcomingTitle ?? ''} onChange={(event) => patchProfile({ upcomingTitle: event.target.value })} /></label>
+              <label className="wide">Релиз
+                <select value={profile.upcomingReleaseId ?? ''} onChange={(event) => patchProfile({ upcomingReleaseId: event.target.value })}>
+                  <option value="">Не выбран</option>
+                  {releases.filter((item) => item.publicId && !item.draft).map((item) => (
+                    <option key={item.publicId} value={item.publicId}>{item.title}</option>
+                  ))}
+                </select>
+              </label>
               <label className="wide">Описание<textarea value={profile.upcomingText ?? ''} onChange={(event) => patchProfile({ upcomingText: event.target.value })} /></label>
               <WhenField value={profile.upcomingAt ?? ''} onChange={(upcomingAt) => patchProfile({ upcomingAt })} />
               <label>Подпись таймера<input value={profile.upcomingLabel ?? ''} onChange={(event) => patchProfile({ upcomingLabel: event.target.value })} /></label>
