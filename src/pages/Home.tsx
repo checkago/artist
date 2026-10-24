@@ -231,7 +231,7 @@ export default function Home() {
               {(profile.titleWhite || profile.titleGradient) && (
                 <h1>
                   {profile.titleWhite}
-                  {profile.titleGradient && <span className="grad">{profile.titleGradient}</span>}
+                  {profile.titleGradient && <span className="grad" data-text={profile.titleGradient}>{profile.titleGradient}</span>}
                 </h1>
               )}
               {profile.lead && <p className="lead">{profile.lead}</p>}
