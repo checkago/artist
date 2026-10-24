@@ -19,6 +19,10 @@ export type Profile = {
   navReleases: string
   navCovers: string
   navContact: string
+  menuVkUrl: string
+  menuVkIcon: string
+  footerVkUrl: string
+  footerVkIcon: string
   facts: TextBlock[]
   upcomingBadge: string
   upcomingTitle: string

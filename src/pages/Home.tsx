@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getSite, platformLabel, safeHref, type Picture, type Profile, type Release, type TextBlock } from '../api'
 
+function faClass(code: string) {
+  const tokens = code.split(/\s+/).filter((token) => /^fa[a-z0-9-]*$/i.test(token))
+  return tokens.join(' ') || 'fa-brands fa-vk'
+}
+
 function releaseDate(value: string) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
@@ -202,6 +207,8 @@ export default function Home() {
   }, [])
 
   const vk = profile ? safeHref(profile.vkUrl) : undefined
+  const menuVk = profile ? safeHref(profile.menuVkUrl) : undefined
+  const footerVk = profile ? safeHref(profile.footerVkUrl) : undefined
   const yandex = profile ? safeHref(profile.yandexUrl) : undefined
   const zvuk = profile ? safeHref(profile.zvukUrl) : undefined
   const showSound = profile && (profile.steps.length > 0 || profile.sounds.length > 0 || profile.shots.length > 0)
@@ -217,7 +224,11 @@ export default function Home() {
           {profile && profile.covers.length > 0 && <a href="#covers">{profile.navCovers}</a>}
           {showContact && <a href="#contact">{profile?.navContact}</a>}
         </nav>
-        {vk && <a className="icon-btn" href={vk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">VK</a>}
+        {menuVk && (
+          <a className="icon-btn" href={menuVk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">
+            <i className={faClass(profile?.menuVkIcon || '')} aria-hidden="true" />
+          </a>
+        )}
         <button className="menu-btn" type="button" aria-label="Меню" onClick={() => setOpen((value) => !value)}>
           <span aria-hidden="true">{open ? '×' : '☰'}</span>
         </button>
@@ -370,7 +381,11 @@ export default function Home() {
           <span>© {new Date().getFullYear()} {profile?.name || 'CHECKago'}{profile?.footer ? ` · ${profile.footer}` : ''}</span>
         </footer>
       </main>
-      {vk && <a className="float-vk" href={vk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">VK</a>}
+      {footerVk && (
+        <a className="float-vk" href={footerVk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">
+          <i className={faClass(profile?.footerVkIcon || '')} aria-hidden="true" />
+        </a>
+      )}
     </>
   )
 }

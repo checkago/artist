@@ -405,7 +405,7 @@ export default function Admin() {
             </button>
           ))}
         </div>
-        <section className="panel stack" id="admin-releases" hidden={tab !== 'releases'}>
+        <section className="admin-blocks" id="admin-releases" hidden={tab !== 'releases'}>
           <div className="admin-head">
             <p className="kicker">Релизы</p>
             <button className="btn btn-ghost btn-small" type="button" onClick={openCreate}>Новый релиз</button>
@@ -414,7 +414,7 @@ export default function Admin() {
           {releaseNote && <p className="status">{releaseNote}</p>}
 
           {releases.map((release, index) => (
-            <article className="release-admin" key={release.id}>
+            <article className="release-admin admin-block" key={release.id}>
               <img src={release.cover} alt="" />
               <div>
                 <strong>{release.title}</strong>
@@ -432,7 +432,7 @@ export default function Admin() {
           {releases.length === 0 && <div className="empty">Пока пусто. Новый релиз появляется здесь только после обложки и кнопки «Добавить релиз».</div>}
 
           {draft && (
-            <form className="admin-card stack" ref={releaseFormRef} onSubmit={onSaveRelease}>
+            <form className="admin-block stack" ref={releaseFormRef} onSubmit={onSaveRelease}>
               <div className="admin-grid">
                 <label>Название<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required /></label>
                 <label>Исполнитель<input value={draft.artist} onChange={(event) => setDraft({ ...draft, artist: event.target.value })} required /></label>
@@ -466,8 +466,9 @@ export default function Admin() {
         </section>
 
         {profile && (
-          <form id="page-form" className="panel stack" hidden={tab === 'releases'} onSubmit={onSaveProfile}>
-            <section hidden={tab !== 'hero'}>
+          <form id="page-form" hidden={tab === 'releases'} onSubmit={onSaveProfile}>
+            <div className="admin-blocks" hidden={tab !== 'hero'}>
+            <section className="admin-block">
             <h2>Первый экран</h2>
             <div className="admin-grid">
               <label>Имя<input value={profile.name} onChange={(event) => patchProfile({ name: event.target.value })} /></label>
@@ -477,6 +478,11 @@ export default function Admin() {
               <label>Заголовок<input value={profile.titleWhite} onChange={(event) => patchProfile({ titleWhite: event.target.value })} /></label>
               <label>Градиентная строка<input value={profile.titleGradient} onChange={(event) => patchProfile({ titleGradient: event.target.value })} /></label>
               <label className="wide">Лид<textarea value={profile.lead} onChange={(event) => patchProfile({ lead: event.target.value })} /></label>
+            </div>
+            </section>
+            <section className="admin-block">
+            <h2>Кнопки</h2>
+            <div className="admin-grid">
               <label>Кнопка Яндекс.Музыки<input value={profile.yandexButton} onChange={(event) => patchProfile({ yandexButton: event.target.value })} /></label>
               <label>Кнопка ВКонтакте<input value={profile.heroButton} onChange={(event) => patchProfile({ heroButton: event.target.value })} /></label>
               <label>Кнопка Звука<input value={profile.zvukButton} onChange={(event) => patchProfile({ zvukButton: event.target.value })} /></label>
@@ -485,16 +491,28 @@ export default function Admin() {
               <label className="wide">ВКонтакте<input value={profile.vkUrl} onChange={(event) => patchProfile({ vkUrl: event.target.value })} /></label>
               <label className="wide">Звук<input value={profile.zvukUrl} onChange={(event) => patchProfile({ zvukUrl: event.target.value })} /></label>
             </div>
-            <p className="kicker">Пункты меню</p>
+            </section>
+            <section className="admin-block">
+            <h2>VK в меню</h2>
+            <div className="admin-grid">
+              <label className="wide">Ссылка<input value={profile.menuVkUrl} onChange={(event) => patchProfile({ menuVkUrl: event.target.value })} /></label>
+              <label className="wide">Иконка Font Awesome<input value={profile.menuVkIcon} placeholder="fa-brands fa-vk" onChange={(event) => patchProfile({ menuVkIcon: event.target.value })} /></label>
+            </div>
+            </section>
+            <section className="admin-block">
+            <h2>Пункты меню</h2>
             <div className="admin-grid">
               <label>Звук<input value={profile.navSound} onChange={(event) => patchProfile({ navSound: event.target.value })} /></label>
               <label>Релизы<input value={profile.navReleases} onChange={(event) => patchProfile({ navReleases: event.target.value })} /></label>
               <label>Обложки<input value={profile.navCovers} onChange={(event) => patchProfile({ navCovers: event.target.value })} /></label>
               <label>Контакты<input value={profile.navContact} onChange={(event) => patchProfile({ navContact: event.target.value })} /></label>
             </div>
-            <p className="kicker">Факты под заголовком</p>
+            </section>
+            <section className="admin-block">
+            <h2>Факты под заголовком</h2>
             <PairEditor items={profile.facts} titleLabel="Крупно" textLabel="Подпись" addLabel="Факт" onChange={(facts) => patchProfile({ facts })} />
-
+            </section>
+            <section className="admin-block">
             <h2>Портрет</h2>
             {profile.portrait && <img src={profile.portrait} alt="" style={{ width: 220, borderRadius: 16 }} />}
             <div className="admin-grid">
@@ -506,8 +524,10 @@ export default function Admin() {
             </div>
             {profile.portrait && <button className="btn btn-danger btn-small" type="button" onClick={() => patchProfile({ portrait: '' })}>Убрать портрет</button>}
             </section>
+            </div>
 
-            <section hidden={tab !== 'upcoming'}>
+            <div className="admin-blocks" hidden={tab !== 'upcoming'}>
+            <section className="admin-block">
             <h2>Ближайший релиз</h2>
             <p className="status">Пустая дата прячет блок. Когда время наступит, он тоже исчезнет.</p>
             {profile.upcomingCover && <img src={profile.upcomingCover} alt="" style={{ width: 120, borderRadius: 14 }} />}
@@ -524,31 +544,44 @@ export default function Admin() {
             </div>
             {profile.upcomingCover && <button className="btn btn-danger btn-small" type="button" onClick={() => patchProfile({ upcomingCover: '' })}>Убрать обложку</button>}
             </section>
+            </div>
 
-            <section hidden={tab !== 'sound'}>
+            <div className="admin-blocks" hidden={tab !== 'sound'}>
+            <section className="admin-block">
             <h2>Как собран трек</h2>
             <label>Заголовок блока<input value={profile.soundKicker} onChange={(event) => patchProfile({ soundKicker: event.target.value })} /></label>
-            <p className="kicker">Шаги</p>
+            </section>
+            <section className="admin-block">
+            <h2>Шаги</h2>
             <PairEditor items={profile.steps} titleLabel="Шаг" textLabel="Текст" addLabel="Шаг" onChange={(steps) => patchProfile({ steps })} />
-            <p className="kicker">Жанры</p>
+            </section>
+            <section className="admin-block">
+            <h2>Жанры</h2>
             <PairEditor items={profile.sounds} titleLabel="Жанр" textLabel="Текст" addLabel="Жанр" onChange={(sounds) => patchProfile({ sounds })} />
-            <p className="kicker">Кадры</p>
+            </section>
+            <section className="admin-block">
+            <h2>Кадры</h2>
             <PictureEditor items={profile.shots} onChange={(shots) => patchProfile({ shots })} onError={setProfileError} />
             </section>
+            </div>
 
-            <section hidden={tab !== 'covers'}>
+            <div className="admin-blocks" hidden={tab !== 'covers'}>
+            <section className="admin-block">
             <h2>Обложки</h2>
             <label>Заголовок блока<input value={profile.coversKicker} onChange={(event) => patchProfile({ coversKicker: event.target.value })} /></label>
             <PictureEditor items={profile.covers} onChange={(covers) => patchProfile({ covers })} onError={setProfileError} />
             </section>
+            </div>
 
-            <section hidden={tab !== 'contact'}>
+            <div className="admin-blocks" hidden={tab !== 'contact'}>
+            <section className="admin-block">
             <h2>Подписи релизов</h2>
             <div className="admin-grid">
               <label>Заголовок<input value={profile.releasesKicker} onChange={(event) => patchProfile({ releasesKicker: event.target.value })} /></label>
               <label>Текст, если релизов нет<textarea value={profile.releasesEmpty} onChange={(event) => patchProfile({ releasesEmpty: event.target.value })} /></label>
             </div>
-
+            </section>
+            <section className="admin-block">
             <h2>Артист и связь</h2>
             <div className="admin-grid">
               <label>Заголовок об артисте<input value={profile.aboutKicker} onChange={(event) => patchProfile({ aboutKicker: event.target.value })} /></label>
@@ -561,8 +594,15 @@ export default function Admin() {
               <label>Кнопка<input value={profile.contactButton} onChange={(event) => patchProfile({ contactButton: event.target.value })} /></label>
               <label>Подвал<input value={profile.footer} onChange={(event) => patchProfile({ footer: event.target.value })} /></label>
             </div>
-
             </section>
+            <section className="admin-block">
+            <h2>VK в подвале</h2>
+            <div className="admin-grid">
+              <label className="wide">Ссылка<input value={profile.footerVkUrl} onChange={(event) => patchProfile({ footerVkUrl: event.target.value })} /></label>
+              <label className="wide">Иконка Font Awesome<input value={profile.footerVkIcon} placeholder="fa-brands fa-vk" onChange={(event) => patchProfile({ footerVkIcon: event.target.value })} /></label>
+            </div>
+            </section>
+            </div>
           </form>
         )}
         {profile && (

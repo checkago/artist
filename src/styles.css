@@ -101,6 +101,7 @@ img { max-width: 100%; }
   cursor: pointer;
 }
 .icon-btn { background: linear-gradient(180deg, #e879f9, #7c3aed); }
+.icon-btn i { font-size: 18px; }
 .menu-btn { display: none; }
 
 .hero { text-align: center; padding-top: 18px; }
@@ -721,11 +722,10 @@ h1 {
   place-items: center;
   border-radius: 50%;
   text-decoration: none;
-  font-family: Unbounded, sans-serif;
-  font-size: 13px;
   background: linear-gradient(180deg, #e879f9, #7c3aed);
   box-shadow: 0 12px 30px rgba(124, 58, 237, 0.45);
 }
+.float-vk i { font-size: 26px; }
 
 .status { color: var(--muted); }
 .error { color: #fecdd3; }
@@ -770,8 +770,27 @@ h1 {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 .save-bar p { margin: 0; text-align: right; }
-.admin-page h2 { margin: 22px 0 0; font-size: 22px; }
-.admin-page section > h2:first-child { margin-top: 0; }
+.admin-page h2 { margin: 0 0 14px; font-size: 22px; }
+.admin-blocks { display: grid; gap: 18px; }
+.admin-block {
+  border-radius: 22px;
+  border: 1px solid rgba(167, 139, 250, 0.32);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 72px),
+    rgba(12, 8, 22, 0.94);
+  padding: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 46px -14px rgba(123, 79, 255, 0.95),
+    0 0 28px rgba(123, 79, 255, 0.42);
+}
+.admin-blocks > .admin-block:nth-child(even) {
+  border-color: rgba(232, 121, 249, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 46px -14px rgba(217, 70, 239, 0.95),
+    0 0 28px rgba(192, 38, 211, 0.45);
+}
 .admin-head, .release-tools, .link-row { display: flex; gap: 8px; align-items: center; }
 .admin-head { justify-content: space-between; margin-bottom: 18px; }
 .admin-grid { grid-template-columns: 1fr 1fr; }
