@@ -477,9 +477,13 @@ export default function Admin() {
               <label>Заголовок<input value={profile.titleWhite} onChange={(event) => patchProfile({ titleWhite: event.target.value })} /></label>
               <label>Градиентная строка<input value={profile.titleGradient} onChange={(event) => patchProfile({ titleGradient: event.target.value })} /></label>
               <label className="wide">Лид<textarea value={profile.lead} onChange={(event) => patchProfile({ lead: event.target.value })} /></label>
+              <label>Кнопка Яндекс.Музыки<input value={profile.yandexButton} onChange={(event) => patchProfile({ yandexButton: event.target.value })} /></label>
               <label>Кнопка ВКонтакте<input value={profile.heroButton} onChange={(event) => patchProfile({ heroButton: event.target.value })} /></label>
+              <label>Кнопка Звука<input value={profile.zvukButton} onChange={(event) => patchProfile({ zvukButton: event.target.value })} /></label>
               <label>Кнопка релизов<input value={profile.releasesButton} onChange={(event) => patchProfile({ releasesButton: event.target.value })} /></label>
+              <label className="wide">Яндекс.Музыка<input value={profile.yandexUrl} onChange={(event) => patchProfile({ yandexUrl: event.target.value })} /></label>
               <label className="wide">ВКонтакте<input value={profile.vkUrl} onChange={(event) => patchProfile({ vkUrl: event.target.value })} /></label>
+              <label className="wide">Звук<input value={profile.zvukUrl} onChange={(event) => patchProfile({ zvukUrl: event.target.value })} /></label>
             </div>
             <p className="kicker">Пункты меню</p>
             <div className="admin-grid">

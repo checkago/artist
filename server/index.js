@@ -35,6 +35,10 @@ function seed() {
       logoMark: 'CK',
       pageTitle: 'CHECKago — рутс-регги',
       heroButton: 'Слушать во ВКонтакте',
+      yandexButton: 'Слушать в Яндекс.Музыке',
+      yandexUrl: 'https://music.yandex.ru/album/44514912',
+      zvukButton: 'Слушать в Звуке',
+      zvukUrl: 'https://zvuk.com/release/53489018',
       releasesButton: 'Релизы',
       navSound: 'Звук',
       navReleases: 'Релизы',
@@ -185,6 +189,10 @@ function cleanPictures(list) {
 function cleanProfile(input) {
   const vkUrl = normalizeUrl(input?.vkUrl)
   if (text(input?.vkUrl, 500) && !vkUrl) return { error: 'Проверьте ссылку ВКонтакте' }
+  const yandexUrl = normalizeUrl(input?.yandexUrl)
+  if (text(input?.yandexUrl, 500) && !yandexUrl) return { error: 'Проверьте ссылку Яндекс.Музыки' }
+  const zvukUrl = normalizeUrl(input?.zvukUrl)
+  if (text(input?.zvukUrl, 500) && !zvukUrl) return { error: 'Проверьте ссылку Звука' }
   const portrait = cleanSrc(input?.portrait)
   if (text(input?.portrait, 500) && portrait === null) return { error: 'Проверьте портрет' }
   const shots = cleanPictures(input?.shots)
@@ -207,6 +215,10 @@ function cleanProfile(input) {
       titleGradient: text(input?.titleGradient, 80),
       lead: text(input?.lead, 500),
       heroButton: text(input?.heroButton, 80),
+      yandexButton: text(input?.yandexButton, 80),
+      yandexUrl: yandexUrl || '',
+      zvukButton: text(input?.zvukButton, 80),
+      zvukUrl: zvukUrl || '',
       releasesButton: text(input?.releasesButton, 80),
       navSound: text(input?.navSound, 40) || 'Звук',
       navReleases: text(input?.navReleases, 40) || 'Релизы',

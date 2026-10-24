@@ -10,6 +10,10 @@ export type Profile = {
   titleGradient: string
   lead: string
   heroButton: string
+  yandexButton: string
+  yandexUrl: string
+  zvukButton: string
+  zvukUrl: string
   releasesButton: string
   navSound: string
   navReleases: string
