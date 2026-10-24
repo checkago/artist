@@ -139,7 +139,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function getSite() {
-  return request<{ profile: Profile; releases: Release[]; announcements: Announcement[] }>('/api/site')
+  return request<{ profile: Profile; releases: Release[]; announcements: Announcement[] }>('/api/site', { cache: 'no-store' })
 }
 
 export function getAdminSite() {

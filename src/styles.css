@@ -868,7 +868,7 @@ h1 {
 .status { color: var(--muted); }
 .error { color: #fecdd3; }
 
-.admin-page { width: min(980px, calc(100% - 32px)); padding-bottom: 120px; }
+.admin-page { width: min(980px, calc(100% - 48px)); margin: 0 auto; padding-bottom: 120px; }
 .admin-tabs {
   display: flex;
   gap: 8px;

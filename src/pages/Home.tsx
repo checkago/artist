@@ -245,18 +245,38 @@ export default function Home() {
 
   useEffect(() => {
     let live = true
-    getSite()
-      .then((data) => {
-        if (!live) return
-        setProfile(data.profile)
-        setReleases(data.releases)
-        setAnnouncements(data.announcements || [])
-        document.title = data.profile.pageTitle || data.profile.name
-      })
-      .catch((reason: Error) => {
-        if (live) setError(reason.message)
-      })
-    return () => { live = false }
+    let snapshot = ''
+
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return
+      getSite()
+        .then((data) => {
+          if (!live) return
+          const next = JSON.stringify(data)
+          if (next === snapshot) return
+          snapshot = next
+          setProfile(data.profile)
+          setReleases(data.releases)
+          setAnnouncements(data.announcements || [])
+          document.title = data.profile.pageTitle || data.profile.name
+          setError('')
+        })
+        .catch((reason: Error) => {
+          if (live && !snapshot) setError(reason.message)
+        })
+    }
+
+    refresh()
+    const timer = window.setInterval(refresh, 5000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   const vk = profile ? safeHref(profile.vkUrl) : undefined

@@ -493,6 +493,7 @@ app.disable('x-powered-by')
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/site', (_req, res) => {
+  res.set('Cache-Control', 'no-store')
   res.json(publicDb(revealDue(readDb())))
 })
 
