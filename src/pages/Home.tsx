@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getSite, platformLabel, safeHref, type Picture, type Profile, type Release, type TextBlock } from '../api'
 
 function faClass(code: string) {
@@ -42,6 +42,27 @@ function CoverLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
       <button className="lightbox-close" type="button" aria-label="Закрыть" onClick={onClose}>×</button>
       <img src={src} alt={alt} onClick={(event) => event.stopPropagation()} />
     </div>
+  )
+}
+
+function FlipCard({ value }: { value: string }) {
+  const previous = useRef(value)
+  const [frame, setFrame] = useState({ from: '––', to: value, play: 0 })
+
+  useEffect(() => {
+    if (value === previous.current) return
+    const from = previous.current
+    previous.current = value
+    setFrame((current) => ({ from, to: value, play: current.play + 1 }))
+  }, [value])
+
+  return (
+    <span className="rail-num">
+      <span className="flip-half is-top"><span>{frame.to}</span></span>
+      <span className="flip-half is-bottom"><span>{frame.from}</span></span>
+      <span className="flip-leaf is-top" key={`top-${frame.play}`}><span>{frame.from}</span></span>
+      <span className="flip-leaf is-bottom" key={`bottom-${frame.play}`}><span>{frame.to}</span></span>
+    </span>
   )
 }
 
@@ -103,7 +124,7 @@ function ReleaseRail({ profile }: { profile: Profile }) {
         <div className="rail-cells" aria-hidden="true">
           {units.map((unit, index) => (
             <div className={index === 3 ? 'rail-cell is-sec' : 'rail-cell'} key={unit}>
-              <span className="rail-num">{String(parts[index]).padStart(2, '0')}</span>
+              <FlipCard value={String(parts[index]).padStart(2, '0')} />
               <small>{unit}</small>
             </div>
           ))}
