@@ -29,6 +29,41 @@ type Draft = {
   preview: string
 }
 
+const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'))
+const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'))
+
+function upcomingParts(value: string) {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(value)
+  return { date: match?.[1] ?? '', hour: match?.[2] ?? '00', minute: match?.[3] ?? '00' }
+}
+
+function upcomingValue(date: string, hour: string, minute: string) {
+  if (!date) return ''
+  return `${date}T${hour}:${minute}`
+}
+
+function WhenField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const when = upcomingParts(value)
+  const update = (part: { date?: string; hour?: string; minute?: string }) => {
+    onChange(upcomingValue(part.date ?? when.date, part.hour ?? when.hour, part.minute ?? when.minute))
+  }
+  return (
+    <label className="wide">
+      Дата и время выхода
+      <span className="when-pick">
+        <input type="date" lang="ru-RU" value={when.date} onChange={(event) => update({ date: event.target.value })} />
+        <select aria-label="Часы" value={when.date ? when.hour : '00'} disabled={!when.date} onChange={(event) => update({ hour: event.target.value })}>
+          {hours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+        </select>
+        <span className="when-colon" aria-hidden="true">:</span>
+        <select aria-label="Минуты" value={when.date ? when.minute : '00'} disabled={!when.date} onChange={(event) => update({ minute: event.target.value })}>
+          {minutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
+        </select>
+      </span>
+    </label>
+  )
+}
+
 function moveItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const next = index + direction
   if (next < 0 || next >= items.length) return items
@@ -529,13 +564,13 @@ export default function Admin() {
             <div className="admin-blocks" hidden={tab !== 'upcoming'}>
             <section className="admin-block">
             <h2>Ближайший релиз</h2>
-            <p className="status">Пустая дата прячет блок. Когда время наступит, он тоже исчезнет.</p>
+            <p className="status">Пустая дата прячет блок. Когда время наступит, вместо таймера появится надпись и останется, пока не зададите новый анонс.</p>
             {profile.upcomingCover && <img src={profile.upcomingCover} alt="" style={{ width: 120, borderRadius: 14 }} />}
             <div className="admin-grid">
               <label>Бейдж<input value={profile.upcomingBadge ?? ''} onChange={(event) => patchProfile({ upcomingBadge: event.target.value })} /></label>
               <label>Название<input value={profile.upcomingTitle ?? ''} onChange={(event) => patchProfile({ upcomingTitle: event.target.value })} /></label>
               <label className="wide">Описание<textarea value={profile.upcomingText ?? ''} onChange={(event) => patchProfile({ upcomingText: event.target.value })} /></label>
-              <label>Дата и время выхода<input type="datetime-local" value={profile.upcomingAt ?? ''} onChange={(event) => patchProfile({ upcomingAt: event.target.value })} /></label>
+              <WhenField value={profile.upcomingAt ?? ''} onChange={(upcomingAt) => patchProfile({ upcomingAt })} />
               <label>Подпись таймера<input value={profile.upcomingLabel ?? ''} onChange={(event) => patchProfile({ upcomingLabel: event.target.value })} /></label>
               <label className="btn btn-ghost file-btn">
                 {profile.upcomingCover ? 'Заменить обложку' : 'Загрузить обложку'}

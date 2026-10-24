@@ -66,7 +66,13 @@ function FlipCard({ value }: { value: string }) {
   )
 }
 
-function ReleaseRail({ profile }: { profile: Profile }) {
+const arrivedWords = ['пришло', 'время', 'насладиться', 'звуком']
+
+function plainTitle(value: string) {
+  return value.trim().toLowerCase().replace(/[«»"]/g, '')
+}
+
+function ReleaseRail({ profile, releases }: { profile: Profile; releases: Release[] }) {
   const target = profile.upcomingAt ? releaseDate(profile.upcomingAt) : null
   const targetMs = target?.getTime() ?? Number.NaN
   const [now, setNow] = useState(() => Date.now())
@@ -74,11 +80,16 @@ function ReleaseRail({ profile }: { profile: Profile }) {
 
   useEffect(() => {
     if (!Number.isFinite(targetMs) || targetMs <= Date.now()) return
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    const timer = window.setInterval(() => {
+      const next = Date.now()
+      setNow(next)
+      if (next >= targetMs) window.clearInterval(timer)
+    }, 1000)
     return () => window.clearInterval(timer)
   }, [targetMs])
 
-  if (!target || targetMs <= now) return null
+  if (!target) return null
+  const ended = targetMs <= now
 
   const total = Math.floor((targetMs - now) / 1000)
   const parts = [
@@ -94,6 +105,8 @@ function ReleaseRail({ profile }: { profile: Profile }) {
   const cover = (profile.upcomingCover ?? '').trim()
   const coverAlt = title ? `Обложка «${title}»` : 'Обложка релиза'
   const units = ['дней', 'часов', 'мин', 'сек']
+  const release = releases.find((item) => plainTitle(item.title) === plainTitle(title))
+  const releaseHref = release ? `#release-${release.id}` : '#releases'
 
   return (
     <section className="rail glow-run" aria-label={badge}>
@@ -116,24 +129,34 @@ function ReleaseRail({ profile }: { profile: Profile }) {
         {profile.upcomingText.trim() && <p className="rail-desc">{profile.upcomingText}</p>}
         </div>
       </div>
-      <div className="rail-timer">
-        <div className="rail-head">
-          <span className="rail-label"><span className="rail-dot" aria-hidden="true" />{label}</span>
-          <span className="rail-after">{when}</span>
-        </div>
-        <div className="rail-cells" aria-hidden="true">
-          {units.map((unit, index) => (
-            <div className={index === 3 ? 'rail-cell is-sec' : 'rail-cell'} key={unit}>
-              <FlipCard value={String(parts[index]).padStart(2, '0')} />
-              <small>{unit}</small>
+      <div className={ended ? 'rail-timer is-arrived' : 'rail-timer'}>
+        {ended ? (
+          <a className="rail-arrived" href={releaseHref}>
+            {arrivedWords.map((word) => (
+              <span className="grad" data-text={word} key={word}>{word}</span>
+            ))}
+          </a>
+        ) : (
+          <>
+            <div className="rail-head">
+              <span className="rail-label"><span className="rail-dot" aria-hidden="true" />{label}</span>
+              <span className="rail-after">{when}</span>
             </div>
-          ))}
-        </div>
+            <div className="rail-cells" aria-hidden="true">
+              {units.map((unit, index) => (
+                <div className={index === 3 ? 'rail-cell is-sec' : 'rail-cell'} key={unit}>
+                  <FlipCard value={String(parts[index]).padStart(2, '0')} />
+                  <small>{unit}</small>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <span className="sr-only">
         {title ? `${title}. ` : ''}
         {profile.upcomingText.trim() ? `${profile.upcomingText.trim()} ` : ''}
-        Выход {when}.
+        {ended ? 'Пришло время насладиться звуком.' : `Выход ${when}.`}
       </span>
       {coverOpen && cover && <CoverLightbox src={cover} alt={coverAlt} onClose={() => setCoverOpen(false)} />}
     </section>
@@ -160,7 +183,7 @@ function ReleaseCard({ release }: { release: Release }) {
     return href ? [{ ...link, href }] : []
   })
   return (
-    <article className="release">
+    <article className="release" id={`release-${release.id}`}>
       <img src={release.cover} alt={`Обложка «${release.title}»`} />
       <div>
         <h3>{release.title}</h3>
@@ -275,7 +298,7 @@ export default function Home() {
                   ))}
                 </div>
               )}
-              <ReleaseRail profile={profile} />
+              <ReleaseRail profile={profile} releases={releases} />
               <div className="cta">
                 {yandex && profile.yandexButton && (
                   <a className="vk-cta ym-cta" href={yandex} target="_blank" rel="noreferrer">
