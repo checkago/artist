@@ -49,16 +49,44 @@ img { max-width: 100%; }
   height: 100%;
   object-fit: cover;
 }
+.bg-media::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(ellipse 55% 45% at 18% 12%, rgba(88, 28, 135, 0.38), transparent 62%),
+    radial-gradient(ellipse 50% 42% at 88% 86%, rgba(131, 24, 67, 0.28), transparent 64%),
+    linear-gradient(to right bottom, rgba(88, 28, 135, 0.3), transparent 50%, rgba(131, 24, 67, 0.2));
+  background-size: 100% 100%, 100% 100%, 140% 140%;
+  background-position: 0% 0%, 100% 100%, 0% 0%;
+  animation: veil-chroma 22s ease-in-out infinite alternate;
+}
 .bg-media::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(to bottom, rgba(8, 8, 15, 0.94), rgba(8, 8, 15, 0.9) 46%, rgba(8, 8, 15, 0.96)),
-    linear-gradient(to right bottom, rgba(88, 28, 135, 0.55), transparent 48%, rgba(131, 24, 67, 0.34));
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.8) 50%, rgba(0, 0, 0, 0.9));
+}
+@keyframes veil-chroma {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    background-position: 0% 0%, 100% 100%, 0% 20%;
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(2%, -1.5%, 0) scale(1.04);
+    background-position: 40% 30%, 60% 70%, 50% 40%;
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-2%, 2%, 0) scale(1.02);
+    background-position: 80% 10%, 20% 90%, 100% 60%;
+    opacity: 0.88;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .bg-media video { display: none; }
+  .bg-media::before { animation: none; opacity: 1; transform: none; }
 }
 .page { position: relative; z-index: 1; padding: 108px 0 72px; }
 #sound, #covers, #releases, #contact, #admin-releases { scroll-margin-top: 100px; }
