@@ -288,6 +288,9 @@ export default function Home() {
 
   return (
     <>
+      <div className="bg-media" aria-hidden="true">
+        <video ref={(node) => { if (node) node.muted = true }} autoPlay muted loop playsInline preload="auto" src="/media/bg.webm" />
+      </div>
       <header className="nav">
         {profile && <Logo mark={profile.logoMark || 'CK'} name={profile.name} />}
         <nav className={open ? 'nav-links open' : 'nav-links'} onClick={() => setOpen(false)}>

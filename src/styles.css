@@ -1,6 +1,6 @@
 :root {
   color: #f7f4ff;
-  background: #07060e;
+  background: #08080f;
   font-family: Onest, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -14,17 +14,18 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(900px 520px at 50% -10%, rgba(124, 58, 237, 0.42), transparent 62%),
-    radial-gradient(680px 420px at 100% 8%, rgba(217, 70, 239, 0.16), transparent 55%),
-    #07060e;
+  background: #08080f;
 }
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(500px 280px at 0% 28%, rgba(16, 185, 129, 0.05), transparent 70%);
+  background:
+    linear-gradient(to right bottom, rgba(88, 28, 135, 0.34), transparent 48%, rgba(131, 24, 67, 0.22)),
+    radial-gradient(ellipse 80% 55% at 50% -5%, rgba(120, 80, 255, 0.38), transparent 68%),
+    radial-gradient(ellipse 42% 34% at 100% 100%, rgba(217, 70, 239, 0.28), transparent 72%),
+    #08080f;
 }
 a { color: inherit; }
 button, input, textarea, select { font: inherit; color: inherit; }
@@ -35,7 +36,31 @@ img { max-width: 100%; }
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
 }
-.page { padding: 108px 0 72px; }
+.bg-media {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #08080f;
+}
+.bg-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bg-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(8, 8, 15, 0.94), rgba(8, 8, 15, 0.9) 46%, rgba(8, 8, 15, 0.96)),
+    linear-gradient(to right bottom, rgba(88, 28, 135, 0.55), transparent 48%, rgba(131, 24, 67, 0.34));
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-media video { display: none; }
+}
+.page { position: relative; z-index: 1; padding: 108px 0 72px; }
 #sound, #covers, #releases, #contact, #admin-releases { scroll-margin-top: 100px; }
 .page > * + * { margin-top: 40px; }
 
@@ -233,7 +258,7 @@ h1 {
   grid-template-columns: minmax(0, 1fr) 310px;
   gap: 20px;
   align-items: center;
-  width: min(760px, 100%);
+  width: min(880px, 100%);
   margin: 26px auto 0;
   padding: 13px 22px 14px;
   text-align: left;
