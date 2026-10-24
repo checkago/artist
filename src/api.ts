@@ -67,12 +67,26 @@ export type PlatformId =
 
 export type ReleaseLink = { platform: PlatformId; url: string }
 
+export type Announcement = {
+  id: string
+  releaseId: string
+  publicId?: string
+  title: string
+  artist: string
+  cover: string
+  tracks: number
+  at: string
+  text: string
+  archived: boolean
+}
+
 export type Release = {
   id: string
   title: string
   artist: string
   year: number
   tracks: number
+  releasedAt?: string
   cover: string
   links: ReleaseLink[]
   sort: number
@@ -125,11 +139,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function getSite() {
-  return request<{ profile: Profile; releases: Release[] }>('/api/site')
+  return request<{ profile: Profile; releases: Release[]; announcements: Announcement[] }>('/api/site')
 }
 
 export function getAdminSite() {
-  return request<{ profile: Profile; releases: Release[] }>('/api/admin/site')
+  return request<{ profile: Profile; releases: Release[]; announcements: Announcement[] }>('/api/admin/site')
 }
 
 export function getSession() {
@@ -164,7 +178,7 @@ export function saveProfile(profile: Profile) {
 
 export function saveRelease(
   id: string | null,
-  payload: { title: string; artist: string; year: number; tracks: number; links: ReleaseLink[]; draft: boolean; visibleWithoutAnnouncement: boolean },
+  payload: { title: string; artist: string; year: number; tracks: number; releasedAt: string; links: ReleaseLink[]; draft: boolean; visibleWithoutAnnouncement: boolean },
   file: File | null,
 ) {
   const body = new FormData()
@@ -178,6 +192,26 @@ export function saveRelease(
 
 export function deleteRelease(id: string) {
   return request<{ ok: boolean }>(`/api/releases/${id}`, { method: 'DELETE' })
+}
+
+export function createAnnouncement(releaseId: string, text: string) {
+  return request<{ announcement: Announcement }>('/api/announcements', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ releaseId, text }),
+  })
+}
+
+export function updateAnnouncement(id: string, payload: { text: string; at: string }) {
+  return request<{ announcement: Announcement }>(`/api/announcements/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteAnnouncement(id: string) {
+  return request<{ ok: boolean }>(`/api/announcements/${id}`, { method: 'DELETE' })
 }
 
 export function moveRelease(id: string, direction: 'up' | 'down') {

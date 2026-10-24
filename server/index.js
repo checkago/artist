@@ -137,18 +137,46 @@ function withDefaults(profile = {}) {
 }
 
 function revealDue(data) {
-  const at = data.profile?.upcomingAt
-  const publicId = data.profile?.upcomingReleaseId
-  if (!at || !publicId) return data
-  const time = new Date(at).getTime()
-  if (!Number.isFinite(time) || time > Date.now()) return data
-  const index = data.releases.findIndex((item) => item.publicId === publicId && !item.draft && !item.revealed)
-  if (index < 0) return data
-  const releases = data.releases.slice()
-  releases[index] = { ...releases[index], revealed: true }
-  const next = { ...data, releases }
-  store.writeSite(next)
-  return next
+  const now = Date.now()
+  let releases = data.releases || []
+  let releaseChanged = false
+  const announcements = (data.announcements || []).map((item) => {
+    const time = new Date(item.at).getTime()
+    if (!item.at || !Number.isFinite(time) || time > now) return item
+    const next = item.archived ? item : { ...item, archived: true }
+    const index = releases.findIndex((release) => release.id === item.releaseId && !release.draft && !release.revealed)
+    if (index >= 0) {
+      if (!releaseChanged) releases = releases.slice()
+      releases[index] = { ...releases[index], revealed: true }
+      releaseChanged = true
+    }
+    return next
+  })
+  const archivedIds = announcements.filter((item, index) => item.archived && !data.announcements[index]?.archived).map((item) => item.id)
+  if (!releaseChanged && archivedIds.length === 0) return { ...data, announcements }
+  if (releaseChanged) store.writeSite({ ...data, releases })
+  if (archivedIds.length > 0) store.archiveAnnouncements(archivedIds)
+  return { ...data, releases, announcements }
+}
+
+function sortAnnouncements(list) {
+  const active = list.filter((item) => !item.archived).sort((a, b) => String(a.at).localeCompare(String(b.at)))
+  const archived = list.filter((item) => item.archived).sort((a, b) => String(b.at).localeCompare(String(a.at)))
+  return [...active, ...archived]
+}
+
+function publicAnnouncement(item) {
+  return {
+    id: item.id,
+    title: item.title,
+    artist: item.artist,
+    cover: item.cover,
+    tracks: item.tracks || 1,
+    at: item.at,
+    text: item.text,
+    releaseId: item.publicId,
+    archived: Boolean(item.archived),
+  }
 }
 
 function publicRelease(release) {
@@ -173,7 +201,8 @@ function publicDb(data) {
     release.publicId && release.publicId === profile.upcomingReleaseId && !release.draft
   ))
   if (linked) profile.upcomingTracks = linked.tracks || 1
-  return { profile, releases: sortReleases(visible).map(publicRelease) }
+  const announcements = sortAnnouncements(data.announcements || []).filter((item) => item.at).map(publicAnnouncement)
+  return { profile, releases: sortReleases(visible).map(publicRelease), announcements }
 }
 
 function releaseFlags(input, existing) {
@@ -339,10 +368,12 @@ function cleanRelease(input, cover) {
   if (!title || !artist) return { error: 'Нужны название и исполнитель' }
   if (!Number.isInteger(year) || year < 1950 || year > 2100) return { error: 'Год указан неверно' }
   if (!Number.isInteger(tracks) || tracks < 1 || tracks > 99) return { error: 'Укажите число треков от 1 до 99' }
+  const releasedAt = text(input?.releasedAt, 40)
+  if (releasedAt && Number.isNaN(new Date(releasedAt).getTime())) return { error: 'Проверьте дату выхода' }
   if (!cover) return { error: 'Добавьте обложку' }
   const links = cleanLinks(input?.links)
   if (links.error) return links
-  return { release: { title, artist, year, tracks, cover, links: links.links } }
+  return { release: { title, artist, year, tracks, releasedAt, cover, links: links.links } }
 }
 
 function signToken() {
@@ -467,7 +498,11 @@ app.get('/api/site', (_req, res) => {
 
 app.get('/api/admin/site', requireAdmin, (_req, res) => {
   const data = revealDue(readDb())
-  res.json({ profile: withDefaults(data.profile), releases: sortReleases(data.releases) })
+  res.json({
+    profile: withDefaults(data.profile),
+    releases: sortReleases(data.releases),
+    announcements: sortAnnouncements(data.announcements || []),
+  })
 })
 
 app.get('/api/session', (req, res) => {
@@ -571,6 +606,78 @@ app.delete('/api/releases/:id', requireAdmin, asyncRoute(async (req, res) => {
     })
     return { ...db, releases }
   })
+  res.json({ ok: true })
+}))
+
+app.post('/api/announcements', requireAdmin, asyncRoute(async (req, res) => {
+  const releaseId = text(req.body?.releaseId, 80)
+  const description = text(req.body?.text, 300)
+  if (!description) {
+    res.status(400).json({ error: 'Добавьте описание' })
+    return
+  }
+  const release = readDb().releases.find((item) => item.id === releaseId)
+  if (!release) {
+    res.status(404).json({ error: 'Релиз не найден' })
+    return
+  }
+  if (release.draft || !release.publicId) {
+    res.status(400).json({ error: 'Снимите «Черновик» и сохраните релиз' })
+    return
+  }
+  if (!release.releasedAt) {
+    res.status(400).json({ error: 'Укажите дату выхода в карточке релиза и сохраните её' })
+    return
+  }
+  const atTime = new Date(release.releasedAt).getTime()
+  const announcement = {
+    id: crypto.randomUUID(),
+    releaseId: release.id,
+    publicId: release.publicId,
+    title: release.title,
+    artist: release.artist,
+    cover: release.cover,
+    tracks: release.tracks || 1,
+    at: release.releasedAt,
+    text: description,
+    archived: Number.isFinite(atTime) && atTime <= Date.now(),
+  }
+  store.insertAnnouncement(announcement)
+  const data = revealDue(readDb())
+  res.json({ announcement: (data.announcements || []).find((item) => item.id === announcement.id) || announcement })
+}))
+
+app.put('/api/announcements/:id', requireAdmin, asyncRoute(async (req, res) => {
+  const current = readDb().announcements.find((item) => item.id === req.params.id)
+  if (!current) {
+    res.status(404).json({ error: 'Анонс не найден' })
+    return
+  }
+  if (current.archived) {
+    res.status(400).json({ error: 'Архивный анонс не редактируется' })
+    return
+  }
+  const description = text(req.body?.text, 300)
+  const at = text(req.body?.at, 40)
+  if (!description) {
+    res.status(400).json({ error: 'Добавьте описание' })
+    return
+  }
+  if (!at || Number.isNaN(new Date(at).getTime())) {
+    res.status(400).json({ error: 'Проверьте дату выхода' })
+    return
+  }
+  const saved = store.updateAnnouncement({ id: current.id, text: description, at })
+  if (!saved) {
+    res.status(400).json({ error: 'Архивный анонс не редактируется' })
+    return
+  }
+  const data = revealDue(readDb())
+  res.json({ announcement: (data.announcements || []).find((item) => item.id === current.id) })
+}))
+
+app.delete('/api/announcements/:id', requireAdmin, asyncRoute(async (req, res) => {
+  store.deleteAnnouncement(req.params.id)
   res.json({ ok: true })
 }))
 

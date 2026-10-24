@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getSite, platformLabel, releaseKind, safeHref, type Picture, type Profile, type Release, type TextBlock } from '../api'
+import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Picture, type Profile, type Release, type TextBlock } from '../api'
 
 function faClass(code: string) {
   const tokens = code.split(/\s+/).filter((token) => /^fa[a-z0-9-]*$/i.test(token))
@@ -68,12 +68,12 @@ function FlipCard({ value }: { value: string }) {
 
 const arrivedWords = ['пришло', 'время', 'насладиться', 'звуком']
 
-function ReleaseRail({ profile, onEnded }: { profile: Profile; onEnded: () => void }) {
-  const target = profile.upcomingAt ? releaseDate(profile.upcomingAt) : null
+function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: Announcement; badge: string; label: string; onEnded: () => void }) {
+  const target = announcement.at ? releaseDate(announcement.at) : null
   const targetMs = target?.getTime() ?? Number.NaN
   const [now, setNow] = useState(() => Date.now())
   const [coverOpen, setCoverOpen] = useState(false)
-  const endedNow = Boolean(target) && targetMs <= now
+  const endedNow = Boolean(announcement.archived) || (Boolean(target) && targetMs <= now)
   const seenEnded = useRef(endedNow)
 
   useEffect(() => {
@@ -103,14 +103,13 @@ function ReleaseRail({ profile, onEnded }: { profile: Profile; onEnded: () => vo
     total % 60,
   ]
   const when = formatReleaseDate(target)
-  const badge = profile.upcomingBadge.trim() || 'Новый релиз'
-  const label = profile.upcomingLabel.trim() || 'До выхода'
-  const title = profile.upcomingTitle.trim().replace(/^[«"]|[»"]$/g, '')
-  const kind = profile.upcomingReleaseId && title ? releaseKind(profile.upcomingTracks ?? 1) : ''
-  const cover = (profile.upcomingCover ?? '').trim()
+  const title = announcement.title.trim().replace(/^[«"]|[»"]$/g, '')
+  const kind = title ? releaseKind(announcement.tracks || 1) : ''
+  const cover = announcement.cover.trim()
   const coverAlt = title ? `Обложка «${title}»` : 'Обложка релиза'
   const units = ['дней', 'часов', 'мин', 'сек']
-  const releaseHref = profile.upcomingReleaseId ? `#release-${profile.upcomingReleaseId}` : '#releases'
+  const releaseHref = announcement.releaseId ? `#release-${announcement.releaseId}` : '#releases'
+  const artist = announcement.artist.trim()
 
   return (
     <section className="rail glow-run" aria-label={badge}>
@@ -132,8 +131,8 @@ function ReleaseRail({ profile, onEnded }: { profile: Profile; onEnded: () => vo
           <span>{title ? `«${title}»` : 'Выход'}</span>
           {kind && <span className="rail-kind">{kind}</span>}
         </p>
-        <p className="rail-date">{when}</p>
-        {profile.upcomingText.trim() && <p className="rail-desc">{profile.upcomingText}</p>}
+        <p className="rail-date">{artist ? `${artist} · ${when}` : when}</p>
+        {announcement.text.trim() && <p className="rail-desc">{announcement.text}</p>}
         </div>
       </div>
       <div className={ended ? 'rail-timer is-arrived' : 'rail-timer'}>
@@ -162,7 +161,7 @@ function ReleaseRail({ profile, onEnded }: { profile: Profile; onEnded: () => vo
       </div>
       <span className="sr-only">
         {title ? `${title}${kind ? `, ${kind}` : ''}. ` : ''}
-        {profile.upcomingText.trim() ? `${profile.upcomingText.trim()} ` : ''}
+        {announcement.text.trim() ? `${announcement.text.trim()} ` : ''}
         {ended ? 'Пришло время насладиться звуком.' : `Выход ${when}.`}
       </span>
       {coverOpen && cover && <CoverLightbox src={cover} alt={coverAlt} onClose={() => setCoverOpen(false)} />}
@@ -240,6 +239,7 @@ function Pictures({ items, className }: { items: Picture[]; className: string })
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [releases, setReleases] = useState<Release[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -250,6 +250,7 @@ export default function Home() {
         if (!live) return
         setProfile(data.profile)
         setReleases(data.releases)
+        setAnnouncements(data.announcements || [])
         document.title = data.profile.pageTitle || data.profile.name
       })
       .catch((reason: Error) => {
@@ -306,12 +307,25 @@ export default function Home() {
                   ))}
                 </div>
               )}
-              <ReleaseRail profile={profile} onEnded={() => {
-                getSite().then((data) => {
-                  setProfile(data.profile)
-                  setReleases(data.releases)
-                }).catch(() => {})
-              }} />
+              {announcements.length > 0 && (
+                <div className="announcements">
+                  {announcements.map((announcement) => (
+                    <ReleaseRail
+                      key={announcement.id}
+                      announcement={announcement}
+                      badge={profile.upcomingBadge.trim() || 'Новый релиз'}
+                      label={profile.upcomingLabel.trim() || 'До выхода'}
+                      onEnded={() => {
+                        getSite().then((data) => {
+                          setProfile(data.profile)
+                          setReleases(data.releases)
+                          setAnnouncements(data.announcements || [])
+                        }).catch(() => {})
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="cta">
                 {yandex && profile.yandexButton && (
                   <a className="vk-cta ym-cta" href={yandex} target="_blank" rel="noreferrer">

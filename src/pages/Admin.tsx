@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   PLATFORMS,
+  createAnnouncement,
+  deleteAnnouncement,
+  updateAnnouncement,
   deleteRelease,
   getAdminSite,
   getSession,
@@ -15,6 +18,7 @@ import {
   type Picture,
   type PlatformId,
   type Profile,
+  type Announcement,
   type Release,
   type ReleaseLink,
   type TextBlock,
@@ -26,6 +30,7 @@ type Draft = {
   artist: string
   year: string
   tracks: string
+  releasedAt: string
   links: ReleaseLink[]
   file: File | null
   preview: string
@@ -44,6 +49,14 @@ function upcomingParts(value: string) {
 function upcomingValue(date: string, hour: string, minute: string) {
   if (!date) return ''
   return `${date}T${hour}:${minute}`
+}
+
+function formatWhen(value: string) {
+  const date = new Date(value)
+  if (!value || Number.isNaN(date.getTime())) return 'Дата не указана'
+  const day = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+  if (date.getHours() === 0 && date.getMinutes() === 0) return day
+  return `${day}, ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
 }
 
 function WhenField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -191,6 +204,7 @@ const emptyDraft = (): Draft => ({
   artist: 'CHECKago',
   year: String(new Date().getFullYear()),
   tracks: '1',
+  releasedAt: '',
   links: [{ platform: 'vk', url: '' }],
   file: null,
   preview: '',
@@ -204,6 +218,12 @@ export default function Admin() {
   const [password, setPassword] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [releases, setReleases] = useState<Release[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [announceOpen, setAnnounceOpen] = useState(false)
+  const [announceText, setAnnounceText] = useState('')
+  const [announceError, setAnnounceError] = useState('')
+  const [editing, setEditing] = useState<Announcement | null>(null)
+  const [editAt, setEditAt] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState('')
   const [profileError, setProfileError] = useState('')
@@ -227,6 +247,7 @@ export default function Admin() {
     const site = await getAdminSite()
     setProfile(site.profile)
     setReleases(site.releases)
+    setAnnouncements(site.announcements || [])
   }
 
   useEffect(() => {
@@ -259,17 +280,6 @@ export default function Admin() {
 
   function patchProfile(patch: Partial<Profile>) {
     setProfile((current) => current ? { ...current, ...patch } : current)
-  }
-
-  async function onUpcomingCover(file: File | undefined) {
-    if (!file || !profile) return
-    setProfileError('')
-    try {
-      const uploaded = await uploadMedia(file)
-      patchProfile({ upcomingCover: uploaded.url })
-    } catch (reason) {
-      setProfileError(reason instanceof Error ? reason.message : 'Не удалось загрузить обложку')
-    }
   }
 
   async function onPortrait(file: File | undefined) {
@@ -314,6 +324,7 @@ export default function Admin() {
       artist: release.artist,
       year: String(release.year),
       tracks: String(release.tracks || 1),
+      releasedAt: release.releasedAt || '',
       links: release.links.length > 0 ? release.links.map((link) => ({ ...link })) : [{ platform: 'vk', url: '' }],
       file: null,
       preview: release.cover,
@@ -395,6 +406,7 @@ export default function Admin() {
         artist,
         year,
         tracks,
+        releasedAt: draft.releasedAt,
         links,
         draft: draft.isDraft,
         visibleWithoutAnnouncement: draft.visibleWithoutAnnouncement,
@@ -404,6 +416,7 @@ export default function Admin() {
       setDraft(null)
       const site = await getAdminSite()
       setReleases(site.releases)
+      setAnnouncements(site.announcements || [])
       if (saved.draft) setReleaseNote(saved.publicId ? `«${saved.title}» снова черновик. На сайте его нет, ID сохранён: ${saved.publicId}` : `«${saved.title}» сохранён как черновик. На сайте его нет, ID появится после снятия галочки.`)
       else if (saved.visibleWithoutAnnouncement) setReleaseNote(`«${saved.title}» на сайте. ID: ${saved.publicId}`)
       else setReleaseNote(`«${saved.title}» получил ID ${saved.publicId}. На сайте появится, когда закончится таймер его анонса.`)
@@ -425,6 +438,64 @@ export default function Admin() {
       if (draft?.id === release.id) setDraft(null)
     } catch (reason) {
       setReleaseError(reason instanceof Error ? reason.message : 'Не удалось удалить')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onCreateAnnouncement(event: FormEvent) {
+    event.preventDefault()
+    if (!draft?.id) return
+    setBusy(true)
+    setAnnounceError('')
+    try {
+      await createAnnouncement(draft.id, announceText.trim())
+      const site = await getAdminSite()
+      setReleases(site.releases)
+      setAnnouncements(site.announcements || [])
+      setAnnounceOpen(false)
+      setReleaseNote(`Анонс «${draft.title}» сохранён`)
+    } catch (reason) {
+      setAnnounceError(reason instanceof Error ? reason.message : 'Анонс не сохранился')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function openEditAnnouncement(item: Announcement) {
+    setEditing(item)
+    setAnnounceText(item.text)
+    setEditAt(item.at)
+    setAnnounceError('')
+  }
+
+  async function onSaveAnnouncement(event: FormEvent) {
+    event.preventDefault()
+    if (!editing) return
+    setBusy(true)
+    setAnnounceError('')
+    try {
+      await updateAnnouncement(editing.id, { text: announceText.trim(), at: editAt })
+      const site = await getAdminSite()
+      setAnnouncements(site.announcements || [])
+      setReleases(site.releases)
+      setEditing(null)
+      setProfileNote(`Анонс «${editing.title}» сохранён`)
+    } catch (reason) {
+      setAnnounceError(reason instanceof Error ? reason.message : 'Анонс не сохранился')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onDeleteAnnouncement(item: Announcement) {
+    if (!window.confirm(`Удалить анонс «${item.title}»?`)) return
+    setBusy(true)
+    try {
+      await deleteAnnouncement(item.id)
+      setAnnouncements((current) => current.filter((entry) => entry.id !== item.id))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не удалось удалить анонс')
     } finally {
       setBusy(false)
     }
@@ -516,6 +587,7 @@ export default function Admin() {
                 <label>Исполнитель<input value={draft.artist} onChange={(event) => setDraft({ ...draft, artist: event.target.value })} required /></label>
                 <label>Год<input inputMode="numeric" value={draft.year} onChange={(event) => setDraft({ ...draft, year: event.target.value })} required /></label>
                 <label>Треков<input inputMode="numeric" value={draft.tracks} onChange={(event) => setDraft({ ...draft, tracks: event.target.value })} required /></label>
+                <WhenField value={draft.releasedAt} onChange={(releasedAt) => setDraft({ ...draft, releasedAt })} />
                 <label>
                   {draft.id ? 'Новая обложка' : 'Обложка'}
                   <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
@@ -565,8 +637,10 @@ export default function Admin() {
               {releaseError && <p className="error">{releaseError}</p>}
               <div className="release-tools">
                 <button className="btn btn-primary" type="submit" disabled={busy}>{draft.id ? 'Сохранить релиз' : 'Добавить релиз'}</button>
+                <button className="btn btn-ghost" type="button" disabled={!draft.id || busy} onClick={() => { setAnnounceText(''); setAnnounceError(''); setAnnounceOpen(true) }}>Создать анонс</button>
                 <button className="btn btn-ghost" type="button" onClick={() => setDraft(null)}>Отмена</button>
               </div>
+              {!draft.id && <p className="note">«Создать анонс» включится после сохранения релиза.</p>}
             </form>
           )}
         </section>
@@ -634,29 +708,29 @@ export default function Admin() {
 
             <div className="admin-blocks" hidden={tab !== 'upcoming'}>
             <section className="admin-block">
-            <h2>Ближайший релиз</h2>
-            <p className="status">Пустая дата прячет блок. Когда время наступит, вместо таймера появится надпись и останется, пока не зададите новый анонс. В списке «Релиз» выберите карточку с ID: по окончании таймера она появится на сайте, а надпись будет вести на неё.</p>
-            {profile.upcomingCover && <img src={profile.upcomingCover} alt="" style={{ width: 120, borderRadius: 14 }} />}
+            <h2>Анонсы</h2>
+            <p className="status">Новый анонс создаётся из карточки релиза. Когда таймер заканчивается, анонс остаётся здесь и на сайте и помечается как архивный.</p>
             <div className="admin-grid">
               <label>Бейдж<input value={profile.upcomingBadge ?? ''} onChange={(event) => patchProfile({ upcomingBadge: event.target.value })} /></label>
-              <label>Название<input value={profile.upcomingTitle ?? ''} onChange={(event) => patchProfile({ upcomingTitle: event.target.value })} /></label>
-              <label className="wide">Релиз
-                <select value={profile.upcomingReleaseId ?? ''} onChange={(event) => patchProfile({ upcomingReleaseId: event.target.value })}>
-                  <option value="">Не выбран</option>
-                  {releases.filter((item) => item.publicId && !item.draft).map((item) => (
-                    <option key={item.publicId} value={item.publicId}>{item.title}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="wide">Описание<textarea value={profile.upcomingText ?? ''} onChange={(event) => patchProfile({ upcomingText: event.target.value })} /></label>
-              <WhenField value={profile.upcomingAt ?? ''} onChange={(upcomingAt) => patchProfile({ upcomingAt })} />
               <label>Подпись таймера<input value={profile.upcomingLabel ?? ''} onChange={(event) => patchProfile({ upcomingLabel: event.target.value })} /></label>
-              <label className="btn btn-ghost file-btn">
-                {profile.upcomingCover ? 'Заменить обложку' : 'Загрузить обложку'}
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { void onUpcomingCover(event.target.files?.[0]) }} />
-              </label>
             </div>
-            {profile.upcomingCover && <button className="btn btn-danger btn-small" type="button" onClick={() => patchProfile({ upcomingCover: '' })}>Убрать обложку</button>}
+            {announcements.map((item) => (
+              <article className={item.cover ? 'release-admin admin-block' : 'announce-row admin-block'} key={item.id}>
+                {item.cover && <img src={item.cover} alt="" />}
+                <div>
+                  <strong>{item.title}</strong>
+                  <p className="release-kind">{releaseKind(item.tracks || 1)}</p>
+                  <p className="release-meta">{item.artist}{item.at ? ` · ${formatWhen(item.at)}` : ''}</p>
+                  {item.text && <p className="note">{item.text}</p>}
+                  <p className="note">{item.archived ? 'Архив' : 'Таймер идёт'}</p>
+                </div>
+                <div className="release-tools">
+                  {!item.archived && <button className="btn btn-ghost btn-small" type="button" onClick={() => openEditAnnouncement(item)}>Редактировать</button>}
+                  <button className="btn btn-danger btn-small" type="button" onClick={() => { void onDeleteAnnouncement(item) }}>Удалить</button>
+                </div>
+              </article>
+            ))}
+            {announcements.length === 0 && <div className="empty">Анонсов пока нет.</div>}
             </section>
             </div>
 
@@ -711,6 +785,51 @@ export default function Admin() {
             </section>
             </div>
           </form>
+        )}
+        {announceOpen && draft?.id && (
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Новый анонс" onClick={() => setAnnounceOpen(false)}>
+            <form className="modal-card" onClick={(event) => event.stopPropagation()} onSubmit={onCreateAnnouncement}>
+              {(() => {
+                const source = releases.find((item) => item.id === draft.id)
+                const title = source?.title || draft.title
+                const artist = source?.artist || draft.artist
+                const cover = source?.cover || (draft.preview.startsWith('blob:') ? '' : draft.preview)
+                const tracks = source?.tracks || Number(draft.tracks) || 1
+                const at = source?.releasedAt || ''
+                return (
+                  <>
+                    {cover && <img src={cover} alt="" />}
+                    <p className="rail-headline"><span>«{title}»</span><span className="rail-kind">{releaseKind(tracks)}</span></p>
+                    <p className="release-meta">{artist}</p>
+                    <p className="note">{formatWhen(at)}</p>
+                  </>
+                )
+              })()}
+              <label className="wide">Описание<textarea value={announceText} onChange={(event) => setAnnounceText(event.target.value)} required /></label>
+              <p className="note">Название, обложка, дата, исполнитель и тип взяты из сохранённого релиза. Осталось описание.</p>
+              {announceError && <p className="error">{announceError}</p>}
+              <div className="release-tools">
+                <button className="btn btn-primary" type="submit" disabled={busy}>Сохранить анонс</button>
+                <button className="btn btn-ghost" type="button" onClick={() => setAnnounceOpen(false)}>Закрыть</button>
+              </div>
+            </form>
+          </div>
+        )}
+        {editing && (
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Редактировать анонс" onClick={() => setEditing(null)}>
+            <form className="modal-card" onClick={(event) => event.stopPropagation()} onSubmit={onSaveAnnouncement}>
+              {editing.cover && <img src={editing.cover} alt="" />}
+              <p className="rail-headline"><span>«{editing.title}»</span><span className="rail-kind">{releaseKind(editing.tracks || 1)}</span></p>
+              <p className="release-meta">{editing.artist}</p>
+              <WhenField value={editAt} onChange={setEditAt} />
+              <label className="wide">Описание<textarea value={announceText} onChange={(event) => setAnnounceText(event.target.value)} required /></label>
+              {announceError && <p className="error">{announceError}</p>}
+              <div className="release-tools">
+                <button className="btn btn-primary" type="submit" disabled={busy}>Сохранить</button>
+                <button className="btn btn-ghost" type="button" onClick={() => setEditing(null)}>Закрыть</button>
+              </div>
+            </form>
+          </div>
         )}
         {profile && (
           <div className="save-bar">

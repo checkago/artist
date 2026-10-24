@@ -206,6 +206,27 @@ h1 {
 .facts div + div { border-left: 1px solid var(--line); }
 .facts b { display: block; font-family: Unbounded, sans-serif; font-size: 18px; }
 .facts span { color: var(--muted); font-size: 13px; }
+.announcements { display: grid; gap: 18px; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 3, 12, 0.72);
+}
+.modal-card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #120c1c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.modal-card img { width: 140px; border-radius: 14px; }
 .rail {
   position: relative;
   display: grid;
@@ -940,6 +961,7 @@ textarea { min-height: 110px; resize: vertical; }
 }
 .login h1 { font-size: 36px; max-width: none; }
 .release-admin { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; }
+.announce-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
 .picture-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: start; }
 .picture-row img { width: 140px; height: auto; border-radius: 12px; background: #09070f; }
 .file-btn { position: relative; }
