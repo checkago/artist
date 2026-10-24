@@ -21,8 +21,6 @@ export type Profile = {
   navContact: string
   menuVkUrl: string
   menuVkIcon: string
-  footerVkUrl: string
-  footerVkIcon: string
   facts: TextBlock[]
   upcomingBadge: string
   upcomingTitle: string

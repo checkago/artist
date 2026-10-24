@@ -46,8 +46,6 @@ function seed() {
       navContact: 'Контакты',
       menuVkUrl: 'https://vk.ru/club241116184',
       menuVkIcon: 'fa-brands fa-vk',
-      footerVkUrl: 'https://vk.ru/club241116184',
-      footerVkIcon: 'fa-brands fa-vk',
       facts: [
         { title: 'Roots', text: 'регги' },
         { title: 'Indie', text: 'регги' },
@@ -201,8 +199,6 @@ function cleanProfile(input) {
   if (text(input?.vkUrl, 500) && !vkUrl) return { error: 'Проверьте ссылку ВКонтакте' }
   const menuVkUrl = normalizeUrl(input?.menuVkUrl)
   if (text(input?.menuVkUrl, 500) && !menuVkUrl) return { error: 'Проверьте ссылку VK в меню' }
-  const footerVkUrl = normalizeUrl(input?.footerVkUrl)
-  if (text(input?.footerVkUrl, 500) && !footerVkUrl) return { error: 'Проверьте ссылку VK в подвале' }
   const yandexUrl = normalizeUrl(input?.yandexUrl)
   if (text(input?.yandexUrl, 500) && !yandexUrl) return { error: 'Проверьте ссылку Яндекс.Музыки' }
   const zvukUrl = normalizeUrl(input?.zvukUrl)
@@ -240,8 +236,6 @@ function cleanProfile(input) {
       navContact: text(input?.navContact, 40) || 'Контакты',
       menuVkUrl: menuVkUrl || '',
       menuVkIcon: cleanIcon(input?.menuVkIcon),
-      footerVkUrl: footerVkUrl || '',
-      footerVkIcon: cleanIcon(input?.footerVkIcon),
       facts: cleanPairs(input?.facts, 6),
       upcomingBadge: text(input?.upcomingBadge, 60),
       upcomingTitle: text(input?.upcomingTitle, 120),

@@ -778,7 +778,7 @@ h1 {
   font-size: 14px;
 }
 .footer a { color: rgba(247, 244, 255, 0.72); }
-.float-vk {
+.to-top {
   position: fixed;
   right: 18px;
   bottom: 18px;
@@ -787,12 +787,14 @@ h1 {
   height: 58px;
   display: grid;
   place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  text-decoration: none;
+  color: white;
+  cursor: pointer;
   background: linear-gradient(180deg, #e879f9, #7c3aed);
   box-shadow: 0 12px 30px rgba(124, 58, 237, 0.45);
 }
-.float-vk i { font-size: 26px; }
 
 .status { color: var(--muted); }
 .error { color: #fecdd3; }

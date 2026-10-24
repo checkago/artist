@@ -229,7 +229,6 @@ export default function Home() {
 
   const vk = profile ? safeHref(profile.vkUrl) : undefined
   const menuVk = profile ? safeHref(profile.menuVkUrl) : undefined
-  const footerVk = profile ? safeHref(profile.footerVkUrl) : undefined
   const yandex = profile ? safeHref(profile.yandexUrl) : undefined
   const zvuk = profile ? safeHref(profile.zvukUrl) : undefined
   const showSound = profile && (profile.steps.length > 0 || profile.sounds.length > 0 || profile.shots.length > 0)
@@ -402,11 +401,19 @@ export default function Home() {
           <span>© {new Date().getFullYear()} {profile?.name || 'CHECKago'}{profile?.footer ? ` · ${profile.footer}` : ''}</span>
         </footer>
       </main>
-      {footerVk && (
-        <a className="float-vk" href={footerVk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">
-          <i className={faClass(profile?.footerVkIcon || '')} aria-hidden="true" />
-        </a>
-      )}
+      <button
+        className="to-top"
+        type="button"
+        aria-label="Наверх"
+        onClick={() => {
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+        }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 19V5M6 11l6-6 6 6" />
+        </svg>
+      </button>
     </>
   )
 }

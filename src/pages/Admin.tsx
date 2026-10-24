@@ -595,13 +595,6 @@ export default function Admin() {
               <label>Подвал<input value={profile.footer} onChange={(event) => patchProfile({ footer: event.target.value })} /></label>
             </div>
             </section>
-            <section className="admin-block">
-            <h2>VK в подвале</h2>
-            <div className="admin-grid">
-              <label className="wide">Ссылка<input value={profile.footerVkUrl} onChange={(event) => patchProfile({ footerVkUrl: event.target.value })} /></label>
-              <label className="wide">Иконка Font Awesome<input value={profile.footerVkIcon} placeholder="fa-brands fa-vk" onChange={(event) => patchProfile({ footerVkIcon: event.target.value })} /></label>
-            </div>
-            </section>
             </div>
           </form>
         )}
