@@ -14,6 +14,7 @@ import {
   releaseKind,
   saveProfile,
   saveRelease,
+  uploadAudio,
   uploadMedia,
   type Picture,
   type PlatformId,
@@ -221,6 +222,7 @@ export default function Admin() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [announceOpen, setAnnounceOpen] = useState(false)
   const [announceText, setAnnounceText] = useState('')
+  const [announceDemo, setAnnounceDemo] = useState('')
   const [announceError, setAnnounceError] = useState('')
   const [editing, setEditing] = useState<Announcement | null>(null)
   const [editAt, setEditAt] = useState('')
@@ -443,17 +445,32 @@ export default function Admin() {
     }
   }
 
+  async function onDemoFile(file: File | null) {
+    if (!file) return
+    setBusy(true)
+    setAnnounceError('')
+    try {
+      const uploaded = await uploadAudio(file)
+      setAnnounceDemo(uploaded.url)
+    } catch (reason) {
+      setAnnounceError(reason instanceof Error ? reason.message : 'Демо не загрузилось')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function onCreateAnnouncement(event: FormEvent) {
     event.preventDefault()
     if (!draft?.id) return
     setBusy(true)
     setAnnounceError('')
     try {
-      await createAnnouncement(draft.id, announceText.trim())
+      await createAnnouncement(draft.id, announceText.trim(), announceDemo)
       const site = await getAdminSite()
       setReleases(site.releases)
       setAnnouncements(site.announcements || [])
       setAnnounceOpen(false)
+      setAnnounceDemo('')
       setReleaseNote(`Анонс «${draft.title}» сохранён`)
     } catch (reason) {
       setAnnounceError(reason instanceof Error ? reason.message : 'Анонс не сохранился')
@@ -466,6 +483,7 @@ export default function Admin() {
     setEditing(item)
     setAnnounceText(item.text)
     setEditAt(item.at)
+    setAnnounceDemo(item.demo || '')
     setAnnounceError('')
   }
 
@@ -475,11 +493,12 @@ export default function Admin() {
     setBusy(true)
     setAnnounceError('')
     try {
-      await updateAnnouncement(editing.id, { text: announceText.trim(), at: editAt })
+      await updateAnnouncement(editing.id, { text: announceText.trim(), at: editAt, demo: announceDemo })
       const site = await getAdminSite()
       setAnnouncements(site.announcements || [])
       setReleases(site.releases)
       setEditing(null)
+      setAnnounceDemo('')
       setProfileNote(`Анонс «${editing.title}» сохранён`)
     } catch (reason) {
       setAnnounceError(reason instanceof Error ? reason.message : 'Анонс не сохранился')
@@ -637,7 +656,7 @@ export default function Admin() {
               {releaseError && <p className="error">{releaseError}</p>}
               <div className="release-tools">
                 <button className="btn btn-primary" type="submit" disabled={busy}>{draft.id ? 'Сохранить релиз' : 'Добавить релиз'}</button>
-                <button className="btn btn-ghost" type="button" disabled={!draft.id || busy} onClick={() => { setAnnounceText(''); setAnnounceError(''); setAnnounceOpen(true) }}>Создать анонс</button>
+                <button className="btn btn-ghost" type="button" disabled={!draft.id || busy} onClick={() => { setAnnounceText(''); setAnnounceDemo(''); setAnnounceError(''); setAnnounceOpen(true) }}>Создать анонс</button>
                 <button className="btn btn-ghost" type="button" onClick={() => setDraft(null)}>Отмена</button>
               </div>
               {!draft.id && <p className="note">«Создать анонс» включится после сохранения релиза.</p>}
@@ -722,7 +741,7 @@ export default function Admin() {
                   <p className="release-kind">{releaseKind(item.tracks || 1)}</p>
                   <p className="release-meta">{item.artist}{item.at ? ` · ${formatWhen(item.at)}` : ''}</p>
                   {item.text && <p className="note">{item.text}</p>}
-                  <p className="note">{item.archived ? 'Архив' : 'Таймер идёт'}</p>
+                  <p className="note">{item.demo ? 'Демо есть' : 'Без демо'} · {item.archived ? 'Архив' : 'Таймер идёт'}</p>
                 </div>
                 <div className="release-tools">
                   {!item.archived && <button className="btn btn-ghost btn-small" type="button" onClick={() => openEditAnnouncement(item)}>Редактировать</button>}
@@ -806,27 +825,47 @@ export default function Admin() {
                 )
               })()}
               <label className="wide">Описание<textarea value={announceText} onChange={(event) => setAnnounceText(event.target.value)} required /></label>
-              <p className="note">Название, обложка, дата, исполнитель и тип взяты из сохранённого релиза. Осталось описание.</p>
+              <label className="wide file-btn">Демо трека
+                <span className="btn btn-ghost btn-small">{announceDemo ? 'Заменить демо' : 'Загрузить MP3'}</span>
+                <input type="file" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.ogg,.wav,.m4a" onChange={(event) => { void onDemoFile(event.target.files?.[0] || null); event.target.value = '' }} />
+              </label>
+              {announceDemo && (
+                <div className="release-tools">
+                  <p className="note">Демо загружено</p>
+                  <button className="btn btn-danger btn-small" type="button" onClick={() => setAnnounceDemo('')}>Убрать</button>
+                </div>
+              )}
+              <p className="note">Название, обложка, дата, исполнитель и тип взяты из сохранённого релиза. Описание и демо — по желанию.</p>
               {announceError && <p className="error">{announceError}</p>}
               <div className="release-tools">
                 <button className="btn btn-primary" type="submit" disabled={busy}>Сохранить анонс</button>
-                <button className="btn btn-ghost" type="button" onClick={() => setAnnounceOpen(false)}>Закрыть</button>
+                <button className="btn btn-ghost" type="button" onClick={() => { setAnnounceOpen(false); setAnnounceDemo('') }}>Закрыть</button>
               </div>
             </form>
           </div>
         )}
         {editing && (
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Редактировать анонс" onClick={() => setEditing(null)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Редактировать анонс" onClick={() => { setEditing(null); setAnnounceDemo('') }}>
             <form className="modal-card" onClick={(event) => event.stopPropagation()} onSubmit={onSaveAnnouncement}>
               {editing.cover && <img src={editing.cover} alt="" />}
               <p className="rail-headline"><span>«{editing.title}»</span><span className="rail-kind">{releaseKind(editing.tracks || 1)}</span></p>
               <p className="release-meta">{editing.artist}</p>
               <WhenField value={editAt} onChange={setEditAt} />
               <label className="wide">Описание<textarea value={announceText} onChange={(event) => setAnnounceText(event.target.value)} required /></label>
+              <label className="wide file-btn">Демо трека
+                <span className="btn btn-ghost btn-small">{announceDemo ? 'Заменить демо' : 'Загрузить MP3'}</span>
+                <input type="file" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.ogg,.wav,.m4a" onChange={(event) => { void onDemoFile(event.target.files?.[0] || null); event.target.value = '' }} />
+              </label>
+              {announceDemo && (
+                <div className="release-tools">
+                  <p className="note">Демо загружено</p>
+                  <button className="btn btn-danger btn-small" type="button" onClick={() => setAnnounceDemo('')}>Убрать</button>
+                </div>
+              )}
               {announceError && <p className="error">{announceError}</p>}
               <div className="release-tools">
                 <button className="btn btn-primary" type="submit" disabled={busy}>Сохранить</button>
-                <button className="btn btn-ghost" type="button" onClick={() => setEditing(null)}>Закрыть</button>
+                <button className="btn btn-ghost" type="button" onClick={() => { setEditing(null); setAnnounceDemo('') }}>Закрыть</button>
               </div>
             </form>
           </div>

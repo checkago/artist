@@ -191,6 +191,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   addColumn('releases', 'revealed', 'INTEGER NOT NULL DEFAULT 0')
   addColumn('releases', 'tracks', 'INTEGER NOT NULL DEFAULT 1')
   addColumn('releases', 'released_at', "TEXT NOT NULL DEFAULT ''")
+  addColumn('announcements', 'demo', "TEXT NOT NULL DEFAULT ''")
   db.prepare(`INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('version', '1')`).run()
 
   const columns = profileFields.map((field) => field[1])
@@ -318,7 +319,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
         revealed: Boolean(release.revealed),
       })),
       announcements: db.prepare(`
-        SELECT id, release_id, public_id, title, artist, cover, tracks, at, text, archived
+        SELECT id, release_id, public_id, title, artist, cover, tracks, at, text, demo, archived
         FROM announcements ORDER BY at, title
       `).all().map((item) => ({
         id: item.id,
@@ -330,6 +331,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
         tracks: item.tracks || 1,
         at: item.at,
         text: item.text,
+        demo: item.demo || '',
         archived: Boolean(item.archived),
       })),
     }
@@ -338,9 +340,9 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   function insertAnnouncement(item) {
     db.prepare(`
       INSERT INTO announcements (
-        id, release_id, public_id, title, artist, cover, tracks, at, text, archived
+        id, release_id, public_id, title, artist, cover, tracks, at, text, demo, archived
       ) VALUES (
-        @id, @releaseId, @publicId, @title, @artist, @cover, @tracks, @at, @text, @archived
+        @id, @releaseId, @publicId, @title, @artist, @cover, @tracks, @at, @text, @demo, @archived
       )
     `).run({
       id: textValue(item?.id) || crypto.randomUUID(),
@@ -352,6 +354,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
       tracks: Number(item?.tracks) || 1,
       at: textValue(item?.at),
       text: textValue(item?.text),
+      demo: textValue(item?.demo),
       archived: item?.archived ? 1 : 0,
     })
   }
@@ -362,18 +365,21 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   })
 
   function deleteAnnouncement(id) {
+    const row = db.prepare('SELECT demo FROM announcements WHERE id = ?').get(id)
     db.prepare('DELETE FROM announcements WHERE id = ?').run(id)
+    return row?.demo || ''
   }
 
   function updateAnnouncement(item) {
     const result = db.prepare(`
       UPDATE announcements
-      SET text = @text, at = @at
+      SET text = @text, at = @at, demo = @demo
       WHERE id = @id AND archived = 0
     `).run({
       id: textValue(item?.id),
       text: textValue(item?.text),
       at: textValue(item?.at),
+      demo: textValue(item?.demo),
     })
     return result.changes > 0
   }

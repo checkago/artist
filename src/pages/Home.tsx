@@ -66,6 +66,95 @@ function FlipCard({ value }: { value: string }) {
   )
 }
 
+function formatDemoTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const total = Math.floor(seconds)
+  const mins = Math.floor(total / 60)
+  const secs = String(total % 60).padStart(2, '0')
+  return `${mins}:${secs}`
+}
+
+function DemoPlayer({ src, compact }: { src: string; compact?: boolean }) {
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [current, setCurrent] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  useEffect(() => {
+    const node = audio.current
+    if (!node) return
+    const onTime = () => setCurrent(node.currentTime || 0)
+    const onMeta = () => setDuration(node.duration || 0)
+    const onEnd = () => setPlaying(false)
+    const onPause = () => setPlaying(false)
+    const onPlay = () => {
+      document.querySelectorAll('audio').forEach((item) => {
+        if (item !== node) item.pause()
+      })
+      setPlaying(true)
+    }
+    node.addEventListener('timeupdate', onTime)
+    node.addEventListener('loadedmetadata', onMeta)
+    node.addEventListener('ended', onEnd)
+    node.addEventListener('pause', onPause)
+    node.addEventListener('play', onPlay)
+    return () => {
+      node.removeEventListener('timeupdate', onTime)
+      node.removeEventListener('loadedmetadata', onMeta)
+      node.removeEventListener('ended', onEnd)
+      node.removeEventListener('pause', onPause)
+      node.removeEventListener('play', onPlay)
+    }
+  }, [src])
+
+  const progress = duration > 0 ? Math.min(100, (current / duration) * 100) : 0
+
+  return (
+    <div className={compact ? 'demo demo-compact' : 'demo'}>
+      <audio ref={audio} src={src} preload="metadata" />
+      <button
+        className="demo-play"
+        type="button"
+        aria-label={playing ? 'Пауза' : 'Слушать демо'}
+        onClick={() => {
+          const node = audio.current
+          if (!node) return
+          if (node.paused) void node.play()
+          else node.pause()
+        }}
+      >
+        {playing ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z" /></svg>
+        )}
+      </button>
+      <div className="demo-body">
+        <div className="demo-meta">
+          <span>Демо</span>
+          <span>{formatDemoTime(current)} / {formatDemoTime(duration)}</span>
+        </div>
+        <input
+          className="demo-seek"
+          type="range"
+          min={0}
+          max={100}
+          step={0.1}
+          value={progress}
+          aria-label="Позиция демо"
+          onChange={(event) => {
+            const node = audio.current
+            if (!node || !duration) return
+            const next = (Number(event.target.value) / 100) * duration
+            node.currentTime = next
+            setCurrent(next)
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 const arrivedWords = ['пришло', 'время', 'насладиться', 'звуком']
 
 function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: Announcement; badge: string; label: string; onEnded: () => void }) {
@@ -106,6 +195,7 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
   const title = announcement.title.trim().replace(/^[«"]|[»"]$/g, '')
   const kind = title ? releaseKind(announcement.tracks || 1) : ''
   const cover = announcement.cover.trim()
+  const demo = (announcement.demo || '').trim()
   const coverAlt = title ? `Обложка «${title}»` : 'Обложка релиза'
   const units = ['дней', 'часов', 'мин', 'сек']
   const releaseHref = announcement.releaseId ? `#release-${announcement.releaseId}` : '#releases'
@@ -116,9 +206,12 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
       <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
       <div className={cover ? 'rail-main has-cover' : 'rail-main'}>
         {cover && (
-          <button className="rail-cover" type="button" onClick={() => setCoverOpen(true)} aria-label={coverAlt}>
-            <img src={cover} alt="" />
-          </button>
+          <div className="rail-media">
+            <button className="rail-cover" type="button" onClick={() => setCoverOpen(true)} aria-label={coverAlt}>
+              <img src={cover} alt="" />
+            </button>
+            {demo && <DemoPlayer src={demo} compact />}
+          </div>
         )}
         <div>
         <span className="rail-badge">
@@ -133,6 +226,7 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
         </p>
         <p className="rail-date">{artist ? `${artist} · ${when}` : when}</p>
         {announcement.text.trim() && <p className="rail-desc">{announcement.text}</p>}
+        {!cover && demo && <DemoPlayer src={demo} />}
         </div>
       </div>
       <div className={ended ? 'rail-timer is-arrived' : 'rail-timer'}>

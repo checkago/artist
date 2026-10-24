@@ -174,6 +174,7 @@ function publicAnnouncement(item) {
     tracks: item.tracks || 1,
     at: item.at,
     text: item.text,
+    demo: item.demo || '',
     releaseId: item.publicId,
     archived: Boolean(item.archived),
   }
@@ -461,6 +462,44 @@ const upload = multer({
   },
 })
 
+function cleanDemo(value) {
+  const demo = text(value, 200)
+  if (!demo) return ''
+  if (!/^\/uploads\/[0-9a-f-]{36}\.(mp3|ogg|wav|m4a)$/i.test(demo)) return null
+  return demo
+}
+
+const audioUpload = multer({
+  storage: multer.diskStorage({
+    destination: uploadsDir,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase()
+      const safeExt = ['.mp3', '.ogg', '.wav', '.m4a'].includes(ext) ? ext : ''
+      cb(null, `${crypto.randomUUID()}${safeExt}`)
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (!['.mp3', '.ogg', '.wav', '.m4a'].includes(ext)) {
+      cb(new Error('Нужен файл MP3, OGG, WAV или M4A'))
+      return
+    }
+    cb(null, true)
+  },
+})
+
+function withAudio(req, res, next) {
+  audioUpload.single('audio')(req, res, (error) => {
+    if (error) {
+      const tooBig = error?.code === 'LIMIT_FILE_SIZE'
+      res.status(400).json({ error: tooBig ? 'Демо больше 15 МБ' : (error.message || 'Не удалось загрузить демо') })
+      return
+    }
+    next()
+  })
+}
+
 function withUpload(req, res, next) {
   upload.single('cover')(req, res, (error) => {
     if (error) {
@@ -630,6 +669,11 @@ app.post('/api/announcements', requireAdmin, asyncRoute(async (req, res) => {
     res.status(400).json({ error: 'Укажите дату выхода в карточке релиза и сохраните её' })
     return
   }
+  const demo = cleanDemo(req.body?.demo)
+  if (demo === null) {
+    res.status(400).json({ error: 'Демо должно быть файлом MP3, OGG, WAV или M4A' })
+    return
+  }
   const atTime = new Date(release.releasedAt).getTime()
   const announcement = {
     id: crypto.randomUUID(),
@@ -641,6 +685,7 @@ app.post('/api/announcements', requireAdmin, asyncRoute(async (req, res) => {
     tracks: release.tracks || 1,
     at: release.releasedAt,
     text: description,
+    demo,
     archived: Number.isFinite(atTime) && atTime <= Date.now(),
   }
   store.insertAnnouncement(announcement)
@@ -668,19 +713,34 @@ app.put('/api/announcements/:id', requireAdmin, asyncRoute(async (req, res) => {
     res.status(400).json({ error: 'Проверьте дату выхода' })
     return
   }
-  const saved = store.updateAnnouncement({ id: current.id, text: description, at })
+  const demo = req.body?.demo === undefined ? current.demo : cleanDemo(req.body.demo)
+  if (demo === null) {
+    res.status(400).json({ error: 'Демо должно быть файлом MP3, OGG, WAV или M4A' })
+    return
+  }
+  const saved = store.updateAnnouncement({ id: current.id, text: description, at, demo })
   if (!saved) {
     res.status(400).json({ error: 'Архивный анонс не редактируется' })
     return
   }
+  if (demo !== current.demo) removeUpload(current.demo)
   const data = revealDue(readDb())
   res.json({ announcement: (data.announcements || []).find((item) => item.id === current.id) })
 }))
 
 app.delete('/api/announcements/:id', requireAdmin, asyncRoute(async (req, res) => {
-  store.deleteAnnouncement(req.params.id)
+  const demo = store.deleteAnnouncement(req.params.id)
+  removeUpload(demo)
   res.json({ ok: true })
 }))
+
+app.post('/api/audio', requireAdmin, withAudio, (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: 'Выберите аудиофайл' })
+    return
+  }
+  res.json({ url: `/uploads/${req.file.filename}` })
+})
 
 app.post('/api/media', requireAdmin, withUpload, (req, res) => {
   if (!req.file) {

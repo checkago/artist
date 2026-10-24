@@ -77,6 +77,7 @@ export type Announcement = {
   tracks: number
   at: string
   text: string
+  demo?: string
   archived: boolean
 }
 
@@ -168,6 +169,12 @@ export function uploadMedia(file: File) {
   return request<{ url: string }>('/api/media', { method: 'POST', body })
 }
 
+export function uploadAudio(file: File) {
+  const body = new FormData()
+  body.append('audio', file)
+  return request<{ url: string }>('/api/audio', { method: 'POST', body })
+}
+
 export function saveProfile(profile: Profile) {
   return request<{ profile: Profile }>('/api/profile', {
     method: 'PUT',
@@ -194,15 +201,15 @@ export function deleteRelease(id: string) {
   return request<{ ok: boolean }>(`/api/releases/${id}`, { method: 'DELETE' })
 }
 
-export function createAnnouncement(releaseId: string, text: string) {
+export function createAnnouncement(releaseId: string, text: string, demo = '') {
   return request<{ announcement: Announcement }>('/api/announcements', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ releaseId, text }),
+    body: JSON.stringify({ releaseId, text, demo }),
   })
 }
 
-export function updateAnnouncement(id: string, payload: { text: string; at: string }) {
+export function updateAnnouncement(id: string, payload: { text: string; at: string; demo: string }) {
   return request<{ announcement: Announcement }>(`/api/announcements/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
