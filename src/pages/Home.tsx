@@ -74,7 +74,7 @@ function formatDemoTime(seconds: number) {
   return `${mins}:${secs}`
 }
 
-function DemoPlayer({ src, compact }: { src: string; compact?: boolean }) {
+function DemoPlayer({ src }: { src: string }) {
   const audio = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -110,7 +110,7 @@ function DemoPlayer({ src, compact }: { src: string; compact?: boolean }) {
   const progress = duration > 0 ? Math.min(100, (current / duration) * 100) : 0
 
   return (
-    <div className={compact ? 'demo demo-compact' : 'demo'}>
+    <div className="demo">
       <audio ref={audio} src={src} preload="metadata" />
       <button
         className="demo-play"
@@ -204,30 +204,29 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
   return (
     <section className="rail glow-run" aria-label={badge}>
       <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
-      <div className={cover ? 'rail-main has-cover' : 'rail-main'}>
-        {cover && (
-          <div className="rail-media">
-            <button className="rail-cover" type="button" onClick={() => setCoverOpen(true)} aria-label={coverAlt}>
-              <img src={cover} alt="" />
-            </button>
-            {demo && <DemoPlayer src={demo} compact />}
-          </div>
-        )}
-        <div>
+      <div className="rail-main">
         <span className="rail-badge">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
             <path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10" />
           </svg>
           {badge}
         </span>
-        <p className="rail-headline">
-          <span>{title ? `«${title}»` : 'Выход'}</span>
-          {kind && <span className="rail-kind">{kind}</span>}
-        </p>
-        <p className="rail-date">{artist ? `${artist} · ${when}` : when}</p>
-        {announcement.text.trim() && <p className="rail-desc">{announcement.text}</p>}
-        {!cover && demo && <DemoPlayer src={demo} />}
+        <div className={cover ? 'rail-top has-cover' : 'rail-top'}>
+          {cover && (
+            <button className="rail-cover" type="button" onClick={() => setCoverOpen(true)} aria-label={coverAlt}>
+              <img src={cover} alt="" />
+            </button>
+          )}
+          <div className="rail-copy">
+            <p className="rail-headline">
+              <span>{title ? `«${title}»` : 'Выход'}</span>
+              {kind && <span className="rail-kind">{kind}</span>}
+            </p>
+            <p className="rail-date">{artist ? `${artist} · ${when}` : when}</p>
+            {announcement.text.trim() && <p className="rail-desc">{announcement.text}</p>}
+          </div>
         </div>
+        {demo && <DemoPlayer src={demo} />}
       </div>
       <div className={ended ? 'rail-timer is-arrived' : 'rail-timer'}>
         {ended ? (
