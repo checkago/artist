@@ -11,6 +11,25 @@ const dataDir = path.join(root, 'data')
 const dataFile = path.join(dataDir, 'site.json')
 const uploadsDir = path.join(root, 'uploads')
 const distDir = path.join(root, 'dist')
+
+function loadEnvFile() {
+  const envPath = path.join(root, '.env')
+  if (!fs.existsSync(envPath)) return
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const index = trimmed.indexOf('=')
+    if (index <= 0) continue
+    const key = trimmed.slice(0, index).trim()
+    let value = trimmed.slice(index + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+    if (!(key in process.env)) process.env[key] = value
+  }
+}
+loadEnvFile()
+
 const port = Number(process.env.PORT || 8787)
 const host = process.env.HOST || '127.0.0.1'
 const password = process.env.ADMIN_PASSWORD || 'checkago'
@@ -572,6 +591,81 @@ app.get('/api/site', (_req, res) => {
   res.set('Cache-Control', 'no-store')
   res.json(publicDb(revealDue(readDb())))
 })
+
+function buildChatSystemPrompt(data) {
+  const profile = withDefaults(data.profile)
+  const releases = sortReleases((data.releases || []).filter((release) => (
+    !release.draft && release.publicId && (release.visibleWithoutAnnouncement || release.revealed)
+  )))
+  const lines = [
+    'Ты — CHECKago Bot, голос артиста CHECKago.',
+    'Стиль: коротко, по-русски, тепло, без канцелярита и без выдуманных фактов.',
+    'Жанр: рутс-регги, инди, симфония внутри грува.',
+    `Лид сайта: ${profile.lead || '—'}`,
+    `Об артисте: ${(profile.about || '').replace(/\n+/g, ' ')}`,
+    'Релизы на сайте:',
+  ]
+  for (const release of releases.slice(0, 12)) {
+    const links = (release.links || []).map((link) => `${link.platform}: ${link.url}`).join('; ')
+    lines.push(`- «${release.title}» (${release.year}, ${release.tracks || 1} тр.): ${release.blurb || 'без подписи'}. Ссылки: ${links || 'пока нет'}`)
+  }
+  if (profile.yandexUrl) lines.push(`Яндекс.Музыка артиста: ${profile.yandexUrl}`)
+  if (profile.vkUrl) lines.push(`VK Музыка / артист: ${profile.vkUrl}`)
+  if (profile.zvukUrl) lines.push(`Звук: ${profile.zvukUrl}`)
+  if (profile.contactEmail) lines.push(`Email: ${profile.contactEmail}`)
+  if (profile.menuVkUrl) lines.push(`Сообщество VK: ${profile.menuVkUrl}`)
+  lines.push('Если не знаешь факт — скажи прямо и предложи раздел Слушать / Релизы / Связь.')
+  return lines.join('\n')
+}
+
+app.post('/api/chat', asyncRoute(async (req, res) => {
+  const key = process.env.DEEPSEEK_API_KEY || ''
+  if (!key) {
+    res.status(503).json({ error: 'Чат ещё не подключён на сервере' })
+    return
+  }
+  const incoming = Array.isArray(req.body?.messages) ? req.body.messages : []
+  const cleaned = incoming
+    .slice(-16)
+    .map((item) => ({
+      role: item?.role === 'assistant' ? 'assistant' : 'user',
+      content: text(item?.content, 1200),
+    }))
+    .filter((item) => item.content)
+  if (cleaned.length === 0) {
+    res.status(400).json({ error: 'Пустое сообщение' })
+    return
+  }
+  const data = revealDue(readDb())
+  const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+  const payload = {
+    model,
+    messages: [
+      { role: 'system', content: buildChatSystemPrompt(data) },
+      ...cleaned,
+    ],
+    stream: false,
+  }
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    res.status(502).json({ error: body?.error?.message || 'DeepSeek не ответил' })
+    return
+  }
+  const reply = text(body?.choices?.[0]?.message?.content, 4000)
+  if (!reply) {
+    res.status(502).json({ error: 'Пустой ответ модели' })
+    return
+  }
+  res.json({ reply })
+}))
 
 app.get('/api/admin/site', requireAdmin, (_req, res) => {
   const data = revealDue(readDb())
