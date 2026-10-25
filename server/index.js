@@ -210,23 +210,33 @@ function publicAnnouncement(item, releases) {
 
 function publicRelease(release) {
   return {
-    id: release.publicId,
+    id: release.publicId || release.id,
     title: release.title,
     artist: release.artist,
     year: release.year,
     tracks: release.tracks,
+    releasedAt: release.releasedAt || '',
     cover: release.cover,
     blurb: release.blurb || '',
-    links: release.links,
+    links: release.links || [],
     sort: release.sort,
+    draft: Boolean(release.draft),
   }
 }
 
 function publicDb(data) {
+  const now = Date.now()
   const allReleases = data.releases || []
   const visible = allReleases.filter((release) => (
     !release.draft && release.publicId && (release.visibleWithoutAnnouncement || release.revealed)
   ))
+  const upcoming = allReleases.filter((release) => {
+    if (!release.releasedAt) return false
+    const time = new Date(release.releasedAt).getTime()
+    if (!Number.isFinite(time)) return false
+    if (release.draft) return true
+    return time > now
+  })
   const profile = withDefaults(data.profile)
   const linked = allReleases.find((release) => (
     release.publicId && release.publicId === profile.upcomingReleaseId && !release.draft
@@ -235,7 +245,12 @@ function publicDb(data) {
   const announcements = sortAnnouncements(data.announcements || [])
     .filter((item) => item.at)
     .map((item) => publicAnnouncement(item, allReleases))
-  return { profile, releases: sortReleases(visible).map(publicRelease), announcements }
+  return {
+    profile,
+    releases: sortReleases(visible).map(publicRelease),
+    upcomingReleases: sortReleases(upcoming).map(publicRelease),
+    announcements,
+  }
 }
 
 function releaseFlags(input, existing) {

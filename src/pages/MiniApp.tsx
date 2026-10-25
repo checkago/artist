@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { getSite, platformLabel, releaseKind, safeHref, type Profile, type Release } from '../api'
+import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Profile, type Release } from '../api'
 
 type TabId = 'home' | 'listen' | 'releases' | 'artist' | 'contact' | 'chat'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
@@ -76,6 +76,95 @@ function paras(text: string) {
   return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean)
 }
 
+function formatRuDate(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month}.${date.getFullYear()}`
+}
+
+function releaseLinks(release: Pick<Release, 'links'>) {
+  return (release.links || []).flatMap((link) => {
+    const href = safeHref(link.url)
+    return href ? [{ platform: link.platform, href }] : []
+  })
+}
+
+function ReleaseCard({
+  release,
+  note,
+  listenLocked = false,
+}: {
+  release: Release
+  note?: string
+  listenLocked?: boolean
+}) {
+  const links = releaseLinks(release)
+  const when = formatRuDate(release.releasedAt)
+  return (
+    <article className="ma-card">
+      <img src={release.cover} alt="" />
+      <div className="ma-card-body">
+        <h2>{release.title}</h2>
+        <p className="ma-meta">
+          {releaseKind(release.tracks)} · {release.year}
+          {when ? ` · ${when}` : ''}
+        </p>
+        {note && <p className="ma-note">{note}</p>}
+        {release.blurb && <p className="ma-dim">{release.blurb}</p>}
+        {listenLocked ? (
+          <button className="ma-mini-btn is-disabled" type="button" disabled>
+            Слушать
+          </button>
+        ) : links.length > 0 ? (
+          <MaListenMenu links={links} />
+        ) : (
+          <span className="ma-soon">Скоро</span>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function buildUpcoming(
+  upcomingReleases: Release[],
+  announcements: Announcement[],
+  catalog: Release[],
+) {
+  const now = Date.now()
+  const byTitle = new Set(upcomingReleases.map((item) => item.title.trim().toLowerCase()))
+  const fromAnnouncements: Release[] = []
+  for (const item of announcements) {
+    if (item.archived) continue
+    const time = item.at ? new Date(item.at).getTime() : Number.NaN
+    if (!Number.isFinite(time) || time <= now) continue
+    const title = item.title.trim()
+    if (!title || byTitle.has(title.toLowerCase())) continue
+    if (catalog.some((release) => release.title.trim().toLowerCase() === title.toLowerCase())) continue
+    byTitle.add(title.toLowerCase())
+    fromAnnouncements.push({
+      id: item.releaseId || item.id,
+      title: item.title,
+      artist: item.artist,
+      year: new Date(item.at).getFullYear(),
+      tracks: item.tracks || 1,
+      releasedAt: item.at,
+      cover: item.cover,
+      blurb: item.text || '',
+      links: item.links || [],
+      sort: time,
+      draft: false,
+    })
+  }
+  return [...upcomingReleases, ...fromAnnouncements].sort((a, b) => {
+    const left = a.releasedAt ? new Date(a.releasedAt).getTime() : 0
+    const right = b.releasedAt ? new Date(b.releasedAt).getTime() : 0
+    return left - right
+  })
+}
+
 function MaListenMenu({ links }: { links: { platform: string; href: string }[] }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -148,6 +237,8 @@ export default function MiniApp() {
   const [tab, setTab] = useState<TabId>('home')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [releases, setReleases] = useState<Release[]>([])
+  const [upcomingReleases, setUpcomingReleases] = useState<Release[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [error, setError] = useState('')
   const [messages, setMessages] = useState<ChatMsg[]>([
     { role: 'assistant', text: 'Привет. Я CHECKago Bot — релизы, площадки, тексты и музыка. Спрашивай.' },
@@ -166,6 +257,8 @@ export default function MiniApp() {
       .then((data) => {
         setProfile(data.profile)
         setReleases(data.releases)
+        setUpcomingReleases(data.upcomingReleases || [])
+        setAnnouncements(data.announcements || [])
       })
       .catch((reason: Error) => setError(reason.message))
     return () => {
@@ -235,6 +328,14 @@ export default function MiniApp() {
     chat: 'Чат',
   }[tab]
 
+  const upcoming = buildUpcoming(upcomingReleases, announcements, releases)
+  const upcomingIds = new Set(upcoming.map((item) => item.id))
+  const released = releases.filter((item) => {
+    if (upcomingIds.has(item.id)) return false
+    const time = item.releasedAt ? new Date(item.releasedAt).getTime() : Number.NaN
+    return !Number.isFinite(time) || time <= Date.now()
+  })
+
   return (
     <div className="ma">
       <header className="ma-bar">
@@ -287,28 +388,39 @@ export default function MiniApp() {
         )}
 
         {profile && tab === 'releases' && (
-          <section className="ma-screen">
-            <p className="ma-kicker">Каталог</p>
-            <div className="ma-list">
-              {releases.length === 0 && <p className="ma-muted">{profile.releasesEmpty || 'Пока пусто.'}</p>}
-              {releases.map((release) => {
-                const links = release.links.flatMap((link) => {
-                  const href = safeHref(link.url)
-                  return href ? [{ platform: link.platform, href }] : []
-                })
-                return (
-                  <article className="ma-card" key={release.id}>
-                    <img src={release.cover} alt="" />
-                    <div className="ma-card-body">
-                      <h2>{release.title}</h2>
-                      <p className="ma-meta">{releaseKind(release.tracks)} · {release.year}</p>
-                      {release.blurb && <p className="ma-dim">{release.blurb}</p>}
-                      {links.length > 0 ? <MaListenMenu links={links} /> : <span className="ma-soon">Скоро</span>}
-                    </div>
-                  </article>
-                )
-              })}
+          <section className="ma-screen is-releases">
+            <div className="ma-block is-top">
+              <p className="ma-kicker">Каталог</p>
+              {released.length === 0 && upcoming.length === 0 && (
+                <p className="ma-muted">{profile.releasesEmpty || 'Пока пусто.'}</p>
+              )}
+              {released.length > 0 && (
+                <>
+                  <h2 className="ma-section-title">Вышедшие</h2>
+                  <div className="ma-list">
+                    {released.map((release) => (
+                      <ReleaseCard key={release.id} release={release} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+
+            {upcoming.length > 0 && (
+              <div className="ma-block is-bottom">
+                <h2 className="ma-section-title">Ожидаемые</h2>
+                <div className="ma-list">
+                  {upcoming.map((release) => (
+                    <ReleaseCard
+                      key={`up-${release.id}`}
+                      release={release}
+                      note={release.draft ? 'Готовится' : 'Скоро'}
+                      listenLocked
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 

@@ -640,17 +640,20 @@ export default function Home() {
             <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
             <p className="kicker">{profile.listenKicker || 'Слушать'}</p>
             <div className="platform-list">
-              {listenPlatforms.map((item) => (
-                <a
-                  className={`btn ${item.key === 'wink' ? 'btn-wink' : item.key === 'mts' ? 'btn-mts' : 'btn-ghost'}`}
-                  key={item.key}
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {item.label}
-                </a>
-              ))}
+              {listenPlatforms.map((item) => {
+                const tone = ({
+                  yandex: 'btn-yandex',
+                  vk: 'btn-vk',
+                  zvuk: 'btn-zvuk',
+                  wink: 'btn-wink',
+                  mts: 'btn-mts',
+                } as Record<string, string>)[item.key] || 'btn-ghost'
+                return (
+                  <a className={`btn ${tone}`} key={item.key} href={item.href} target="_blank" rel="noreferrer">
+                    {item.label}
+                  </a>
+                )
+              })}
             </div>
           </section>
         )}
