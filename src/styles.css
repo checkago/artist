@@ -1001,7 +1001,9 @@ h1 {
 .artist-layout.is-text-only { grid-template-columns: 1fr; }
 .artist-copy { min-width: 0; }
 .artist-copy p { font-size: 16px; line-height: 1.65; }
-.release { display: grid; gap: 14px; padding: 12px; scroll-margin-top: 100px; }
+.release { display: grid; gap: 14px; padding: 12px; scroll-margin-top: 100px; overflow: visible; }
+.release > div { position: relative; z-index: 1; }
+.release:has(.listen-menu.is-open) { z-index: 5; }
 .release img {
   width: 100%;
   aspect-ratio: 1;
@@ -1030,6 +1032,50 @@ h1 {
   background: rgba(167, 139, 250, 0.12);
   border: 1px solid rgba(167, 139, 250, 0.28);
   font-size: 14px;
+}
+.listen-menu {
+  position: relative;
+  display: inline-block;
+}
+.listen-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.listen-menu-caret {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  opacity: 0.85;
+  transition: transform 0.15s ease;
+}
+.listen-menu.is-open .listen-menu-caret { transform: rotate(180deg); }
+.listen-menu-list {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 188px;
+  display: grid;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(12, 8, 22, 0.98);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.listen-menu-list a {
+  display: block;
+  text-decoration: none;
+  color: #f7f4ff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.listen-menu-list a:hover {
+  background: rgba(167, 139, 250, 0.18);
 }
 .section-lead {
   margin: -4px 0 16px;
@@ -1525,7 +1571,42 @@ body.mini-root::before { display: none; }
   font-weight: 700;
   padding: 7px 10px;
   border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
   background: linear-gradient(180deg, #c084fc, #7c3aed);
+}
+.ma-listen {
+  position: relative;
+  justify-self: start;
+  margin-top: 4px;
+}
+.ma-listen .ma-mini-btn { margin-top: 0; }
+.ma-listen-list {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 168px;
+  display: grid;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(12, 8, 22, 0.98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+.ma-listen-list a {
+  display: block;
+  text-decoration: none;
+  color: #f7f4ff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 10px;
+  border-radius: 8px;
+}
+.ma-listen-list a:active,
+.ma-listen-list a:hover {
+  background: rgba(167, 139, 250, 0.18);
 }
 .ma-soon {
   justify-self: start;

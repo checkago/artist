@@ -76,6 +76,44 @@ function paras(text: string) {
   return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean)
 }
 
+function MaListenMenu({ links }: { links: { platform: string; href: string }[] }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    return () => document.removeEventListener('mousedown', onPointer)
+  }, [open])
+
+  return (
+    <div className={open ? 'ma-listen is-open' : 'ma-listen'} ref={rootRef}>
+      <button className="ma-mini-btn" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        Слушать
+      </button>
+      {open && (
+        <div className="ma-listen-list" role="menu">
+          {links.map((link) => (
+            <a
+              key={`${link.platform}-${link.href}`}
+              role="menuitem"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+            >
+              {platformLabel(link.platform)}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function useWebApp() {
   useEffect(() => {
     const tg = document.createElement('script')
@@ -254,9 +292,10 @@ export default function MiniApp() {
             <div className="ma-list">
               {releases.length === 0 && <p className="ma-muted">{profile.releasesEmpty || 'Пока пусто.'}</p>}
               {releases.map((release) => {
-                const primary = release.links
-                  .map((link) => ({ ...link, href: safeHref(link.url) }))
-                  .find((link) => link.href)
+                const links = release.links.flatMap((link) => {
+                  const href = safeHref(link.url)
+                  return href ? [{ platform: link.platform, href }] : []
+                })
                 return (
                   <article className="ma-card" key={release.id}>
                     <img src={release.cover} alt="" />
@@ -264,13 +303,7 @@ export default function MiniApp() {
                       <h2>{release.title}</h2>
                       <p className="ma-meta">{releaseKind(release.tracks)} · {release.year}</p>
                       {release.blurb && <p className="ma-dim">{release.blurb}</p>}
-                      {primary?.href ? (
-                        <a className="ma-mini-btn" href={primary.href} target="_blank" rel="noreferrer">
-                          Слушать · {platformLabel(primary.platform)}
-                        </a>
-                      ) : (
-                        <span className="ma-soon">Скоро</span>
-                      )}
+                      {links.length > 0 ? <MaListenMenu links={links} /> : <span className="ma-soon">Скоро</span>}
                     </div>
                   </article>
                 )

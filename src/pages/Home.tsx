@@ -299,9 +299,62 @@ function Logo({ mark, name }: { mark: string; name: string }) {
   )
 }
 
+function ListenMenu({ links }: { links: { platform: string; href: string }[] }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  if (links.length === 0) return null
+
+  return (
+    <div className={open ? 'listen-menu is-open' : 'listen-menu'} ref={rootRef}>
+      <button
+        className="btn btn-primary btn-small listen-menu-btn"
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+      >
+        Слушать
+        <span className="listen-menu-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="listen-menu-list" role="menu">
+          {links.map((link) => (
+            <a
+              key={`${link.platform}-${link.href}`}
+              role="menuitem"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+            >
+              {platformLabel(link.platform)}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ReleaseCard({ release }: { release: Release }) {
   const links = usableLinks(release.links)
-  const primary = links[0]
   const blurb = (release.blurb || '').trim()
   return (
     <article className="release" id={`release-${release.id}`}>
@@ -311,18 +364,7 @@ function ReleaseCard({ release }: { release: Release }) {
         <p className="release-kind">{releaseKind(release.tracks)}</p>
         <p className="release-meta">{release.artist} · {release.year}</p>
         {blurb && <p className="release-blurb">{blurb}</p>}
-        {primary ? (
-          <div className="release-links">
-            <a className="btn btn-primary btn-small" href={primary.href} target="_blank" rel="noreferrer">Слушать</a>
-            {links.slice(1).map((link) => (
-              <a key={`${link.platform}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
-                {platformLabel(link.platform)}
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="release-soon">Скоро</p>
-        )}
+        {links.length > 0 ? <ListenMenu links={links} /> : <p className="release-soon">Скоро</p>}
       </div>
     </article>
   )
