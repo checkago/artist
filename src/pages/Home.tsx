@@ -41,6 +41,15 @@ function CoverLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
   )
 }
 
+function ruPlural(value: number, one: string, few: string, many: string) {
+  const n = Math.abs(Math.trunc(value)) % 100
+  const last = n % 10
+  if (n > 10 && n < 20) return many
+  if (last === 1) return one
+  if (last >= 2 && last <= 4) return few
+  return many
+}
+
 function FlipCard({ value }: { value: string }) {
   const previous = useRef(value)
   const [frame, setFrame] = useState({ from: '––', to: value, play: 0 })
@@ -203,7 +212,7 @@ function ReleaseRail({
   if (!target) return null
   const ended = endedNow
 
-  const total = Math.floor((targetMs - now) / 1000)
+  const total = Math.max(0, Math.floor((targetMs - now) / 1000))
   const parts = [
     Math.floor(total / 86400),
     Math.floor((total % 86400) / 3600),
@@ -216,7 +225,12 @@ function ReleaseRail({
   const cover = announcement.cover.trim()
   const demo = (announcement.demo || '').trim()
   const coverAlt = title ? `Обложка «${title}»` : 'Обложка релиза'
-  const units = ['дней', 'часов', 'мин', 'сек']
+  const units = [
+    ruPlural(parts[0], 'день', 'дня', 'дней'),
+    ruPlural(parts[1], 'час', 'часа', 'часов'),
+    'мин',
+    'сек',
+  ]
   const releaseHref = announcement.releaseId ? `#release-${announcement.releaseId}` : '#releases'
   const artist = announcement.artist.trim()
   const badgeText = kind ? `${badge} · ${kind.toLowerCase()}` : badge
@@ -279,7 +293,7 @@ function ReleaseRail({
             </div>
             <div className="rail-cells" aria-hidden="true">
               {units.map((unit, index) => (
-                <div className={index === 3 ? 'rail-cell is-sec' : 'rail-cell'} key={unit}>
+                <div className={index === 3 ? 'rail-cell is-sec' : 'rail-cell'} key={['d', 'h', 'm', 's'][index]}>
                   <FlipCard value={String(parts[index]).padStart(2, '0')} />
                   <small>{unit}</small>
                 </div>
