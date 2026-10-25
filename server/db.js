@@ -16,11 +16,16 @@ const profileFields = [
   ['yandexUrl', 'yandex_url'],
   ['zvukButton', 'zvuk_button'],
   ['zvukUrl', 'zvuk_url'],
+  ['winkButton', 'wink_button'],
+  ['winkUrl', 'wink_url'],
+  ['mtsButton', 'mts_button'],
+  ['mtsUrl', 'mts_url'],
   ['releasesButton', 'releases_button'],
   ['navSound', 'nav_sound'],
   ['navReleases', 'nav_releases'],
   ['navCovers', 'nav_covers'],
   ['navContact', 'nav_contact'],
+  ['navListen', 'nav_listen'],
   ['menuVkUrl', 'menu_vk_url'],
   ['menuVkIcon', 'menu_vk_icon'],
   ['upcomingBadge', 'upcoming_badge'],
@@ -34,16 +39,21 @@ const profileFields = [
   ['portraitAlt', 'portrait_alt'],
   ['soundKicker', 'sound_kicker'],
   ['coversKicker', 'covers_kicker'],
+  ['coversLead', 'covers_lead'],
   ['releasesKicker', 'releases_kicker'],
   ['releasesEmpty', 'releases_empty'],
   ['aboutKicker', 'about_kicker'],
   ['about', 'about'],
+  ['listenKicker', 'listen_kicker'],
+  ['followKicker', 'follow_kicker'],
   ['contactKicker', 'contact_kicker'],
+  ['contactEmail', 'contact_email'],
   ['contactVkTitle', 'contact_vk_title'],
   ['contactVkText', 'contact_vk_text'],
   ['contactReleaseTitle', 'contact_release_title'],
   ['contactReleaseText', 'contact_release_text'],
   ['contactButton', 'contact_button'],
+  ['featuredListenLabel', 'featured_listen_label'],
   ['footer', 'footer'],
   ['vkUrl', 'vk_url'],
 ]
@@ -148,6 +158,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
       tracks INTEGER NOT NULL DEFAULT 1,
       released_at TEXT NOT NULL DEFAULT '',
       cover TEXT NOT NULL,
+      blurb TEXT NOT NULL DEFAULT '',
       sort INTEGER NOT NULL,
       draft INTEGER NOT NULL DEFAULT 0,
       visible_without_announcement INTEGER NOT NULL DEFAULT 0,
@@ -192,6 +203,17 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   addColumn('releases', 'tracks', 'INTEGER NOT NULL DEFAULT 1')
   addColumn('releases', 'released_at', "TEXT NOT NULL DEFAULT ''")
   addColumn('announcements', 'demo', "TEXT NOT NULL DEFAULT ''")
+  addColumn('releases', 'blurb', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'wink_button', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'wink_url', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'mts_button', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'mts_url', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'nav_listen', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'covers_lead', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'listen_kicker', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'follow_kicker', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'contact_email', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'featured_listen_label', "TEXT NOT NULL DEFAULT ''")
   db.prepare(`INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('version', '1')`).run()
 
   const columns = profileFields.map((field) => field[1])
@@ -209,9 +231,9 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   `)
   const insertRelease = db.prepare(`
     INSERT INTO releases (
-      id, title, artist, year, tracks, released_at, cover, sort, draft, visible_without_announcement, public_id, revealed
+      id, title, artist, year, tracks, released_at, cover, blurb, sort, draft, visible_without_announcement, public_id, revealed
     ) VALUES (
-      @id, @title, @artist, @year, @tracks, @releasedAt, @cover, @sort, @draft, @visibleWithoutAnnouncement, @publicId, @revealed
+      @id, @title, @artist, @year, @tracks, @releasedAt, @cover, @blurb, @sort, @draft, @visibleWithoutAnnouncement, @publicId, @revealed
     )
   `)
   const insertLink = db.prepare(`
@@ -259,6 +281,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
         tracks: Number.isInteger(Number(release?.tracks)) && Number(release?.tracks) > 0 ? Number(release.tracks) : 1,
         releasedAt: textValue(release?.releasedAt),
         cover: textValue(release?.cover),
+        blurb: textValue(release?.blurb),
         sort: Number.isInteger(release?.sort) ? release.sort : index,
         draft: draft ? 1 : 0,
         visibleWithoutAnnouncement: visibleWithoutAnnouncement ? 1 : 0,
@@ -291,7 +314,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
       profile[pair[0]].push({ src: picture.src, alt: picture.alt })
     }
     const releases = db.prepare(`
-      SELECT id, title, artist, year, tracks, released_at, cover, sort, draft, visible_without_announcement, public_id, revealed
+      SELECT id, title, artist, year, tracks, released_at, cover, blurb, sort, draft, visible_without_announcement, public_id, revealed
       FROM releases ORDER BY sort, title
     `).all()
     const links = db.prepare('SELECT release_id, platform, url FROM release_links ORDER BY release_id, position, id').all()
@@ -311,6 +334,7 @@ export function openDatabase({ dataDir, dataFile, seed }) {
         tracks: release.tracks || 1,
         releasedAt: release.released_at || '',
         cover: release.cover,
+        blurb: release.blurb || '',
         links: linksByRelease.get(release.id) || [],
         sort: release.sort,
         draft: Boolean(release.draft),

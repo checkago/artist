@@ -14,11 +14,16 @@ export type Profile = {
   yandexUrl: string
   zvukButton: string
   zvukUrl: string
+  winkButton: string
+  winkUrl: string
+  mtsButton: string
+  mtsUrl: string
   releasesButton: string
   navSound: string
   navReleases: string
   navCovers: string
   navContact: string
+  navListen: string
   menuVkUrl: string
   menuVkIcon: string
   facts: TextBlock[]
@@ -30,6 +35,7 @@ export type Profile = {
   upcomingCover: string
   upcomingReleaseId: string
   upcomingTracks?: number
+  featuredListenLabel: string
   portrait: string
   portraitAlt: string
   soundKicker: string
@@ -37,12 +43,16 @@ export type Profile = {
   sounds: TextBlock[]
   shots: Picture[]
   coversKicker: string
+  coversLead: string
   covers: Picture[]
   releasesKicker: string
   releasesEmpty: string
   aboutKicker: string
   about: string
+  listenKicker: string
+  followKicker: string
   contactKicker: string
+  contactEmail: string
   contactVkTitle: string
   contactVkText: string
   contactReleaseTitle: string
@@ -78,6 +88,7 @@ export type Announcement = {
   at: string
   text: string
   demo?: string
+  links?: ReleaseLink[]
   archived: boolean
 }
 
@@ -89,6 +100,7 @@ export type Release = {
   tracks: number
   releasedAt?: string
   cover: string
+  blurb?: string
   links: ReleaseLink[]
   sort: number
   draft?: boolean
@@ -185,7 +197,17 @@ export function saveProfile(profile: Profile) {
 
 export function saveRelease(
   id: string | null,
-  payload: { title: string; artist: string; year: number; tracks: number; releasedAt: string; links: ReleaseLink[]; draft: boolean; visibleWithoutAnnouncement: boolean },
+  payload: {
+    title: string
+    artist: string
+    year: number
+    tracks: number
+    releasedAt: string
+    blurb: string
+    links: ReleaseLink[]
+    draft: boolean
+    visibleWithoutAnnouncement: boolean
+  },
   file: File | null,
 ) {
   const body = new FormData()

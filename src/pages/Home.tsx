@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Picture, type Profile, type Release, type TextBlock } from '../api'
-
-function faClass(code: string) {
-  const tokens = code.split(/\s+/).filter((token) => /^fa[a-z0-9-]*$/i.test(token))
-  return tokens.join(' ') || 'fa-brands fa-vk'
-}
+import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Picture, type Profile, type Release, type ReleaseLink } from '../api'
 
 function releaseDate(value: string) {
   const date = new Date(value)
@@ -155,9 +150,26 @@ function DemoPlayer({ src }: { src: string }) {
   )
 }
 
-const arrivedWords = ['пришло', 'время', 'насладиться', 'звуком']
+function usableLinks(links: ReleaseLink[] | undefined) {
+  return (links || []).flatMap((link) => {
+    const href = safeHref(link.url)
+    return href ? [{ ...link, href }] : []
+  })
+}
 
-function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: Announcement; badge: string; label: string; onEnded: () => void }) {
+function ReleaseRail({
+  announcement,
+  badge,
+  label,
+  listenLabel,
+  onEnded,
+}: {
+  announcement: Announcement
+  badge: string
+  label: string
+  listenLabel: string
+  onEnded: () => void
+}) {
   const target = announcement.at ? releaseDate(announcement.at) : null
   const targetMs = target?.getTime() ?? Number.NaN
   const [now, setNow] = useState(() => Date.now())
@@ -200,16 +212,18 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
   const units = ['дней', 'часов', 'мин', 'сек']
   const releaseHref = announcement.releaseId ? `#release-${announcement.releaseId}` : '#releases'
   const artist = announcement.artist.trim()
+  const badgeText = kind ? `${badge} · ${kind.toLowerCase()}` : badge
+  const listenLinks = usableLinks(announcement.links)
 
   return (
-    <section className="rail glow-run" aria-label={badge}>
+    <section className="rail glow-run" aria-label={badgeText}>
       <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
       <div className="rail-main">
         <span className="rail-badge">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
             <path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10" />
           </svg>
-          {badge}
+          {badgeText}
         </span>
         <div className={cover ? 'rail-top has-cover' : 'rail-top'}>
           {cover && (
@@ -230,11 +244,20 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
       </div>
       <div className={ended ? 'rail-timer is-arrived' : 'rail-timer'}>
         {ended ? (
-          <a className="rail-arrived" href={releaseHref}>
-            {arrivedWords.map((word) => (
-              <span className="grad" data-text={word} key={word}>{word}</span>
-            ))}
-          </a>
+          <div className="rail-listen-now">
+            <p className="rail-listen-label">{listenLabel}</p>
+            {listenLinks.length > 0 ? (
+              <div className="rail-listen-links">
+                {listenLinks.map((link) => (
+                  <a key={`${link.platform}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
+                    {platformLabel(link.platform)}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <a className="btn btn-primary" href={releaseHref}>К релизу</a>
+            )}
+          </div>
         ) : (
           <>
             <div className="rail-head">
@@ -255,7 +278,7 @@ function ReleaseRail({ announcement, badge, label, onEnded }: { announcement: An
       <span className="sr-only">
         {title ? `${title}${kind ? `, ${kind}` : ''}. ` : ''}
         {announcement.text.trim() ? `${announcement.text.trim()} ` : ''}
-        {ended ? 'Пришло время насладиться звуком.' : `Выход ${when}.`}
+        {ended ? `${listenLabel}.` : `Выход ${when}.`}
       </span>
       {coverOpen && cover && <CoverLightbox src={cover} alt={coverAlt} onClose={() => setCoverOpen(false)} />}
     </section>
@@ -277,10 +300,9 @@ function Logo({ mark, name }: { mark: string; name: string }) {
 }
 
 function ReleaseCard({ release }: { release: Release }) {
-  const links = release.links.flatMap((link) => {
-    const href = safeHref(link.url)
-    return href ? [{ ...link, href }] : []
-  })
+  const links = usableLinks(release.links)
+  const primary = links[0]
+  const blurb = (release.blurb || '').trim()
   return (
     <article className="release" id={`release-${release.id}`}>
       <img src={release.cover} alt={`Обложка «${release.title}»`} />
@@ -288,31 +310,21 @@ function ReleaseCard({ release }: { release: Release }) {
         <h3>{release.title}</h3>
         <p className="release-kind">{releaseKind(release.tracks)}</p>
         <p className="release-meta">{release.artist} · {release.year}</p>
-        {links.length > 0 ? (
+        {blurb && <p className="release-blurb">{blurb}</p>}
+        {primary ? (
           <div className="release-links">
-            {links.map((link) => (
+            <a className="btn btn-primary btn-small" href={primary.href} target="_blank" rel="noreferrer">Слушать</a>
+            {links.slice(1).map((link) => (
               <a key={`${link.platform}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
                 {platformLabel(link.platform)}
               </a>
             ))}
           </div>
-        ) : <p className="note">Ссылки на площадки появятся после публикации.</p>}
+        ) : (
+          <p className="release-soon">Скоро</p>
+        )}
       </div>
     </article>
-  )
-}
-
-function Blocks({ items }: { items: TextBlock[] }) {
-  if (items.length === 0) return null
-  return (
-    <div className="sounds">
-      {items.map((item, index) => (
-        <article className="sound" key={`${item.title}-${index}`}>
-          {item.title && <h3>{item.title}</h3>}
-          {item.text && <p>{item.text}</p>}
-        </article>
-      ))}
-    </div>
   )
 }
 
@@ -328,6 +340,8 @@ function Pictures({ items, className }: { items: Picture[]; className: string })
     </div>
   )
 }
+
+type PlatformCta = { key: string; href: string; label: string; variant: 'yandex' | 'vk' | 'zvuk' }
 
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -373,11 +387,38 @@ export default function Home() {
   }, [])
 
   const vk = profile ? safeHref(profile.vkUrl) : undefined
-  const menuVk = profile ? safeHref(profile.menuVkUrl) : undefined
+  const followVk = profile ? safeHref(profile.menuVkUrl) || vk : undefined
   const yandex = profile ? safeHref(profile.yandexUrl) : undefined
   const zvuk = profile ? safeHref(profile.zvukUrl) : undefined
-  const showSound = profile && (profile.steps.length > 0 || profile.sounds.length > 0 || profile.shots.length > 0)
-  const showContact = profile && (profile.about || profile.contactVkTitle || profile.contactReleaseTitle || profile.contactButton)
+  const wink = profile ? safeHref(profile.winkUrl) : undefined
+  const mts = profile ? safeHref(profile.mtsUrl) : undefined
+  const email = profile?.contactEmail?.trim() || ''
+  const mailHref = email ? `mailto:${email}` : undefined
+  const showSound = profile && profile.steps.length > 0
+  const showArtist = profile && (profile.aboutKicker || profile.about || profile.portrait)
+  const showListen = Boolean(yandex || vk || zvuk || wink || mts)
+  const showFollow = Boolean(followVk)
+  const showContact = Boolean(email || followVk || profile?.contactReleaseText || profile?.contactButton)
+
+  const heroPlatforms: PlatformCta[] = []
+  if (profile && yandex && profile.yandexButton) heroPlatforms.push({ key: 'yandex', href: yandex, label: profile.yandexButton, variant: 'yandex' })
+  if (profile && vk && profile.heroButton) heroPlatforms.push({ key: 'vk', href: vk, label: profile.heroButton, variant: 'vk' })
+  if (profile && zvuk && profile.zvukButton) heroPlatforms.push({ key: 'zvuk', href: zvuk, label: profile.zvukButton, variant: 'zvuk' })
+
+  const listenPlatforms: { key: string; href: string; label: string }[] = []
+  if (profile && yandex) listenPlatforms.push({ key: 'yandex', href: yandex, label: 'Яндекс.Музыка' })
+  if (profile && vk) listenPlatforms.push({ key: 'vk', href: vk, label: 'VK Музыка' })
+  if (profile && zvuk) listenPlatforms.push({ key: 'zvuk', href: zvuk, label: 'Звук' })
+  if (profile && wink) listenPlatforms.push({ key: 'wink', href: wink, label: profile.winkButton || 'WINK Music' })
+  if (profile && mts) listenPlatforms.push({ key: 'mts', href: mts, label: profile.mtsButton || 'МТС Music' })
+
+  const refreshSite = () => {
+    getSite().then((data) => {
+      setProfile(data.profile)
+      setReleases(data.releases)
+      setAnnouncements(data.announcements || [])
+    }).catch(() => {})
+  }
 
   return (
     <>
@@ -387,14 +428,14 @@ export default function Home() {
       <header className="nav">
         {profile && <Logo mark={profile.logoMark || 'CK'} name={profile.name} />}
         <nav className={open ? 'nav-links open' : 'nav-links'} onClick={() => setOpen(false)}>
-          {profile && showSound && <a href="#sound">{profile.navSound}</a>}
+          {showSound && <a href="#sound">{profile?.navSound || 'Музыка'}</a>}
           <a href="#releases">{profile?.navReleases || 'Релизы'}</a>
           {profile && profile.covers.length > 0 && <a href="#covers">{profile.navCovers}</a>}
-          {showContact && <a href="#contact">{profile?.navContact}</a>}
+          {showContact && <a href="#contact">{profile?.navContact || 'Контакт'}</a>}
         </nav>
-        {menuVk && (
-          <a className="icon-btn" href={menuVk} target="_blank" rel="noreferrer" aria-label="ВКонтакте">
-            <i className={faClass(profile?.menuVkIcon || '')} aria-hidden="true" />
+        {profile && (
+          <a className="nav-listen" href="#listen" onClick={() => setOpen(false)}>
+            {profile.navListen || 'Слушать'}
           </a>
         )}
         <button className="menu-btn" type="button" aria-label="Меню" onClick={() => setOpen((value) => !value)}>
@@ -416,108 +457,53 @@ export default function Home() {
                 </h1>
               )}
               {profile.lead && <p className="lead">{profile.lead}</p>}
-              {profile.facts.length > 0 && (
-                <div className="facts">
-                  {profile.facts.map((fact, index) => (
-                    <div key={`${fact.title}-${index}`}><b>{fact.title}</b><span>{fact.text}</span></div>
-                  ))}
-                </div>
-              )}
-              {announcements.length > 0 && (
-                <div className="announcements">
-                  {announcements.map((announcement) => (
-                    <ReleaseRail
-                      key={announcement.id}
-                      announcement={announcement}
-                      badge={profile.upcomingBadge.trim() || 'Новый релиз'}
-                      label={profile.upcomingLabel.trim() || 'До выхода'}
-                      onEnded={() => {
-                        getSite().then((data) => {
-                          setProfile(data.profile)
-                          setReleases(data.releases)
-                          setAnnouncements(data.announcements || [])
-                        }).catch(() => {})
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
               <div className="cta">
-                {yandex && profile.yandexButton && (
-                  <a className="vk-cta ym-cta" href={yandex} target="_blank" rel="noreferrer">
+                {heroPlatforms.map((item) => (
+                  <a
+                    key={item.key}
+                    className={item.variant === 'yandex' ? 'vk-cta ym-cta' : item.variant === 'zvuk' ? 'vk-cta zvuk-cta' : 'vk-cta'}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     <span className="vk-cta-ico" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 144 144" aria-hidden="true">
-                        <path fill="#FFEE00" d="m130.863 57.739-.468-2.327-19.788-3.457 11.498-15.557-1.337-1.462-16.913 8.11 2.139-21.54-1.738-.997-10.295 17.418L82.395 12H80.39l2.74 25.064-29.08-23.269-2.474.732 22.396 28.122-44.323-14.76-2.006 2.261L67.22 52.686l-54.618 4.521-.602 3.39 56.757 6.184-47.33 39.157 2.005 2.726 56.356-30.648-11.164 53.983h3.41l21.592-50.792 13.17 39.756 2.34-1.795-5.415-40.42 20.524 23.268 1.337-2.128-15.711-28.853 21.928 8.111.201-2.46-19.655-14.493 18.518-4.454Z" />
-                      </svg>
+                      {item.variant === 'yandex' && (
+                        <svg width="18" height="18" viewBox="0 0 144 144" aria-hidden="true">
+                          <path fill="#FFEE00" d="m130.863 57.739-.468-2.327-19.788-3.457 11.498-15.557-1.337-1.462-16.913 8.11 2.139-21.54-1.738-.997-10.295 17.418L82.395 12H80.39l2.74 25.064-29.08-23.269-2.474.732 22.396 28.122-44.323-14.76-2.006 2.261L67.22 52.686l-54.618 4.521-.602 3.39 56.757 6.184-47.33 39.157 2.005 2.726 56.356-30.648-11.164 53.983h3.41l21.592-50.792 13.17 39.756 2.34-1.795-5.415-40.42 20.524 23.268 1.337-2.128-15.711-28.853 21.928 8.111.201-2.46-19.655-14.493 18.518-4.454Z" />
+                        </svg>
+                      )}
+                      {item.variant === 'vk' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12.79 16.24s.28-.03.43-.2c.14-.14.13-.42.13-.42s-.02-1.3.58-1.5c.59-.18 1.35.95 2.16 1.36.6.32 1.07.25 1.07.25l2.15-.03s1.12-.07.59-.96c-.04-.08-.31-.66-1.61-1.87-1.35-1.26-1.17-1.06.46-3.24.99-1.33 1.39-2.15 1.27-2.5-.12-.33-.86-.24-.86-.24l-2.42.02s-.18-.03-.31.05-.22.19-.22.19-.39 1.04-.9 1.92c-1.1 1.87-1.54 1.97-1.71 1.85-.42-.27-.31-1.08-.31-1.66 0-1.8.27-2.56-.53-2.76-.27-.06-.46-.1-1.14-.11-.88-.01-1.62 0-2.04.21-.28.14-.49.44-.36.46.16.02.53.1.72.37.25.34.24 1.11.24 1.11s.15 2.14-.33 2.4c-.33.18-.79-.19-1.76-1.86-.5-.86-.87-1.81-.87-1.81s-.07-.18-.2-.28c-.16-.11-.38-.15-.38-.15l-2.3.02s-.35.01-.47.16c-.12.13-.01.41-.01.41s1.8 4.24 3.83 6.38c1.87 1.96 3.99 1.83 3.99 1.83h.96z" />
+                        </svg>
+                      )}
+                      {item.variant === 'zvuk' && <img src="/media/zvuk.png" alt="" width="32" height="32" />}
                     </span>
-                    <span className="vk-cta-txt"><b>{profile.yandexButton}</b></span>
+                    <span className="vk-cta-txt"><b>{item.label}</b></span>
                     <svg className="vk-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
                   </a>
-                )}
-                {vk && profile.heroButton && (
-                  <a className="vk-cta" href={vk} target="_blank" rel="noreferrer">
-                    <span className="vk-cta-ico" aria-hidden="true">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12.79 16.24s.28-.03.43-.2c.14-.14.13-.42.13-.42s-.02-1.3.58-1.5c.59-.18 1.35.95 2.16 1.36.6.32 1.07.25 1.07.25l2.15-.03s1.12-.07.59-.96c-.04-.08-.31-.66-1.61-1.87-1.35-1.26-1.17-1.06.46-3.24.99-1.33 1.39-2.15 1.27-2.5-.12-.33-.86-.24-.86-.24l-2.42.02s-.18-.03-.31.05-.22.19-.22.19-.39 1.04-.9 1.92c-1.1 1.87-1.54 1.97-1.71 1.85-.42-.27-.31-1.08-.31-1.66 0-1.8.27-2.56-.53-2.76-.27-.06-.46-.1-1.14-.11-.88-.01-1.62 0-2.04.21-.28.14-.49.44-.36.46.16.02.53.1.72.37.25.34.24 1.11.24 1.11s.15 2.14-.33 2.4c-.33.18-.79-.19-1.76-1.86-.5-.86-.87-1.81-.87-1.81s-.07-.18-.2-.28c-.16-.11-.38-.15-.38-.15l-2.3.02s-.35.01-.47.16c-.12.13-.01.41-.01.41s1.8 4.24 3.83 6.38c1.87 1.96 3.99 1.83 3.99 1.83h.96z" />
-                      </svg>
-                    </span>
-                    <span className="vk-cta-txt"><b>{profile.heroButton}</b></span>
-                    <svg className="vk-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 12h14M13 6l6 6-6 6" />
-                    </svg>
-                  </a>
-                )}
-                {zvuk && profile.zvukButton && (
-                  <a className="vk-cta zvuk-cta" href={zvuk} target="_blank" rel="noreferrer">
-                    <span className="vk-cta-ico" aria-hidden="true">
-                      <img src="/media/zvuk.png" alt="" width="32" height="32" />
-                    </span>
-                    <span className="vk-cta-txt"><b>{profile.zvukButton}</b></span>
-                    <svg className="vk-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 12h14M13 6l6 6-6 6" />
-                    </svg>
-                  </a>
-                )}
+                ))}
                 {profile.releasesButton && <a className="btn btn-ghost" href="#releases">{profile.releasesButton}</a>}
               </div>
             </>
           )}
         </div>
 
-        {profile?.portrait && (
-          <div className="wrap">
-            <figure className="shot glow-shade shade-violet">
-              <img src={profile.portrait} alt={profile.portraitAlt} />
-            </figure>
+        {profile && announcements.length > 0 && (
+          <div className="wrap announcements" id="featured">
+            {announcements.map((announcement) => (
+              <ReleaseRail
+                key={announcement.id}
+                announcement={announcement}
+                badge={profile.upcomingBadge.trim() || 'Новый релиз'}
+                label={profile.upcomingLabel.trim() || 'До релиза'}
+                listenLabel={profile.featuredListenLabel.trim() || 'Слушать сейчас'}
+                onEnded={refreshSite}
+              />
+            ))}
           </div>
-        )}
-
-        {profile && showSound && (
-          <section className="wrap panel glow-run" id="sound">
-            <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
-            {profile.soundKicker && <p className="kicker">{profile.soundKicker}</p>}
-            {profile.steps.length > 0 && (
-              <div className="steps">
-                {profile.steps.map((step, index) => (
-                  <article className="step" key={`${step.title}-${index}`}>
-                    {step.title && <b>{step.title}</b>}
-                    {step.text && <p>{step.text}</p>}
-                  </article>
-                ))}
-              </div>
-            )}
-            <Blocks items={profile.sounds} />
-            <Pictures items={profile.shots} className="gallery" />
-          </section>
-        )}
-
-        {profile && profile.covers.length > 0 && (
-          <section className="wrap panel glow-shade shade-pink" id="covers">
-            {profile.coversKicker && <p className="kicker">{profile.coversKicker}</p>}
-            <Pictures items={profile.covers} className="covers" />
-          </section>
         )}
 
         <section className="wrap panel glow-run" id="releases">
@@ -532,34 +518,92 @@ export default function Home() {
           )}
         </section>
 
-        {profile && showContact && (
-          <section className="wrap split" id="contact">
-            {(profile.aboutKicker || profile.about) && (
-              <article className="panel about glow-shade shade-magenta">
-                {profile.aboutKicker && <p className="kicker">{profile.aboutKicker}</p>}
+        {profile && showSound && (
+          <section className="wrap panel glow-run" id="sound">
+            <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
+            {profile.soundKicker && <p className="kicker">{profile.soundKicker}</p>}
+            <div className="steps">
+              {profile.steps.map((step, index) => (
+                <article className="step" key={`${step.title}-${index}`}>
+                  {step.title && <b>{step.title}</b>}
+                  {step.text && <p>{step.text}</p>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {profile && profile.covers.length > 0 && (
+          <section className="wrap panel glow-shade shade-pink" id="covers">
+            {profile.coversKicker && <p className="kicker">{profile.coversKicker}</p>}
+            {profile.coversLead && <p className="section-lead">{profile.coversLead}</p>}
+            <Pictures items={profile.covers} className="covers" />
+          </section>
+        )}
+
+        {profile && showArtist && (
+          <section className="wrap panel about glow-shade shade-magenta" id="artist">
+            {profile.aboutKicker && <p className="kicker">{profile.aboutKicker}</p>}
+            <div className={profile.portrait ? 'artist-layout' : 'artist-layout is-text-only'}>
+              {profile.portrait && (
+                <figure className="shot artist-portrait glow-shade shade-violet">
+                  <img src={profile.portrait} alt={profile.portraitAlt} />
+                </figure>
+              )}
+              <div className="artist-copy">
                 <h2>{profile.name}</h2>
                 {profile.about && <AboutText text={profile.about} />}
-              </article>
-            )}
-            <article className="panel glow-run">
-              <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
-              {profile.contactKicker && <p className="kicker">{profile.contactKicker}</p>}
-              <div className="contact">
-                {vk && (profile.contactVkTitle || profile.contactVkText) && (
-                  <a className="row" href={vk} target="_blank" rel="noreferrer">
-                    {profile.contactVkTitle && <b>{profile.contactVkTitle}</b>}
-                    {profile.contactVkText && <span>{profile.contactVkText}</span>}
-                  </a>
-                )}
-                {(profile.contactReleaseTitle || profile.contactReleaseText) && (
-                  <div className="row">
-                    {profile.contactReleaseTitle && <b>{profile.contactReleaseTitle}</b>}
-                    {profile.contactReleaseText && <span>{profile.contactReleaseText}</span>}
-                  </div>
-                )}
-                {profile.contactButton && <a className="btn btn-primary" href="#releases">{profile.contactButton}</a>}
               </div>
-            </article>
+            </div>
+          </section>
+        )}
+
+        {profile && showListen && (
+          <section className="wrap panel glow-run" id="listen">
+            <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
+            <p className="kicker">{profile.listenKicker || 'Слушать'}</p>
+            <div className="platform-list">
+              {listenPlatforms.map((item) => (
+                <a className="btn btn-ghost" key={item.key} href={item.href} target="_blank" rel="noreferrer">{item.label}</a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {profile && showFollow && followVk && (
+          <section className="wrap panel glow-shade shade-pink" id="follow">
+            <p className="kicker">{profile.followKicker || 'Следить'}</p>
+            <a className="row" href={followVk} target="_blank" rel="noreferrer">
+              <b>{profile.contactVkTitle || 'ВКонтакте'}</b>
+              <span>{profile.contactVkText || 'новые треки и обложки'}</span>
+            </a>
+          </section>
+        )}
+
+        {profile && showContact && (
+          <section className="wrap panel glow-run" id="contact">
+            <span className="neon-ring" aria-hidden="true"><span className="neon-ring-spin" /></span>
+            {profile.contactKicker && <p className="kicker">{profile.contactKicker}</p>}
+            {profile.contactReleaseText && <p className="section-lead">{profile.contactReleaseText}</p>}
+            <div className="contact">
+              {email && (
+                <a className="row" href={mailHref}>
+                  <b>Email</b>
+                  <span>{email}</span>
+                </a>
+              )}
+              {!showFollow && followVk && (
+                <a className="row" href={followVk} target="_blank" rel="noreferrer">
+                  <b>{profile.contactVkTitle || 'ВКонтакте'}</b>
+                  <span>{profile.contactVkText || 'сообщество CHECKago'}</span>
+                </a>
+              )}
+              {profile.contactButton && (mailHref || (!showFollow && followVk)) && (
+                <a className="btn btn-primary" href={mailHref || followVk} target={mailHref ? undefined : '_blank'} rel={mailHref ? undefined : 'noreferrer'}>
+                  {profile.contactButton}
+                </a>
+              )}
+            </div>
           </section>
         )}
 

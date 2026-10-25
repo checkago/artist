@@ -27,68 +27,67 @@ function seed() {
       name: 'CHECKago',
       badge: 'Рутс-регги · инди · симфония',
       titleWhite: 'CHECKago —',
-      titleGradient: 'корень и неон',
-      lead: 'Рутс-регги и инди-регги с симфоническими инъекциями. Корень остаётся корнем — оркестр живёт внутри ритма.',
+      titleGradient: 'корни и неон',
+      lead: 'Рутс-регги и инди с симфонией внутри грува. Свой голос — без чужой частоты и без чужих правил.',
       about:
-        'CHECKago собирает рутс-регги и инди-регги в одном треке. Симфония здесь не увертюра и не фон: струнные и духовые входят в грув как ещё один инструмент. Визуальный мир тот же — регги, которое дошло до неона 2077: хром, плёнка, бас и город за стеклом.',
-      vkUrl: 'https://vk.ru/club241116184',
+        'CHECKago пишет рутс-регги и инди с симфонией внутри ритма. Корень слышен с первого такта: one drop, тёплый бас, offbeat. Струнные и духовые не накрывают песню сверху — они входят в грув как ещё один инструмент и держат свою партию без пафоса.\n\nВ текстах — свой путь. Не плыть по чужим правилам, не мерить жизнь чужим аршином, не набивать котомку чужим. Голос близко: строка важнее жанрового декора.\n\nЗвук тёплый и земной. Неон в картинке — оболочка мира, а не замена корню: хром и город за стеклом обрамляют регги, но не подменяют его.',
+      vkUrl: 'https://vk.ru/artist/2853842974054444473',
       sounds: [],
       logoMark: 'CK',
       pageTitle: 'CHECKago — рутс-регги',
       heroButton: 'Слушать во ВКонтакте',
       yandexButton: 'Слушать в Яндекс.Музыке',
-      yandexUrl: 'https://music.yandex.ru/album/44514912',
+      yandexUrl: 'https://music.yandex.ru/artist/26809206',
       zvukButton: 'Слушать в Звуке',
-      zvukUrl: 'https://zvuk.com/release/53489018',
-      releasesButton: 'Релизы',
-      navSound: 'Звук',
+      zvukUrl: 'https://zvuk.com/artist/214839684',
+      winkButton: 'WINK Music',
+      winkUrl: '',
+      mtsButton: 'МТС Music',
+      mtsUrl: '',
+      releasesButton: 'Все релизы',
+      navSound: 'Музыка',
       navReleases: 'Релизы',
       navCovers: 'Обложки',
-      navContact: 'Контакты',
+      navContact: 'Контакт',
+      navListen: 'Слушать',
       menuVkUrl: 'https://vk.ru/club241116184',
       menuVkIcon: 'fa-brands fa-vk',
-      facts: [
-        { title: 'Roots', text: 'регги' },
-        { title: 'Indie', text: 'регги' },
-        { title: 'Symphony', text: 'внутри грува' },
-      ],
-      upcomingBadge: '',
+      facts: [],
+      upcomingBadge: 'Новый релиз',
       upcomingTitle: '',
       upcomingText: '',
       upcomingAt: '',
-      upcomingLabel: 'До выхода',
+      upcomingLabel: 'До релиза',
       upcomingCover: '',
       upcomingReleaseId: '',
+      featuredListenLabel: 'Слушать сейчас',
       portrait: '/media/chimp.jpg',
       portraitAlt: 'CHECKago: шимпанзе у микрофона, наушники и неон',
-      soundKicker: 'Как собран трек',
+      soundKicker: 'О звуке',
       steps: [
-        { title: 'Пульс', text: 'One drop: бочка на третью долю, круглый бас, гитара на offbeat.' },
-        { title: 'Фраза', text: 'Голос сухой и близко. Гитара ведёт мелодию, текст слышно целиком.' },
-        { title: 'Инъекция', text: 'Струнные или духовые на несколько тактов — дальше снова ритм-секция.' },
-        { title: 'Даб', text: 'Эхо уводит фразу в паузу. Следующий заход открывает бас.' },
+        { title: 'Корень', text: 'One drop, тёплый бас и offbeat. Регги слышно с первого такта.' },
+        { title: 'Песня', text: 'Голос близко. Строка важнее жанрового декора.' },
+        { title: 'Оркестр', text: 'Струнные и духовые — часть грува, не заставка сверху.' },
       ],
-      shots: [
-        { src: '/media/chimp-stage.jpg', alt: 'CHECKago: шимпанзе с гитарой, хром и ночной город' },
-        { src: '/media/chimp-split.jpg', alt: 'CHECKago: регги слева, неон 2077 справа' },
-        { src: '/media/chimp-roots.jpg', alt: 'CHECKago: рутс-регги, гитара и пластинки' },
-      ],
-      coversKicker: 'Обложки для VK',
+      shots: [],
+      coversKicker: 'Обложки',
+      coversLead: 'Визуальный мир треков: корень, город и свой путь.',
       covers: [
-        { src: '/media/vk-wide.jpg', alt: 'Обложка VK: студия, хром и ночной город' },
-        { src: '/media/vk-lion.jpg', alt: 'Обложка VK: лев регги, гитары и хром' },
         { src: '/media/vk-studio.jpg', alt: 'Обложка VK: акустика, неон и металлическая рука' },
       ],
       releasesKicker: 'Релизы',
       releasesEmpty: 'Пока пусто. Новый релиз добавляется в админке.',
       aboutKicker: 'Артист',
-      contactKicker: 'Связь',
+      listenKicker: 'Слушать',
+      followKicker: 'Следить',
+      contactKicker: 'Контакт',
+      contactEmail: '',
       contactVkTitle: 'ВКонтакте',
-      contactVkText: 'Сообщество CHECKago — новые треки и обложки.',
-      contactReleaseTitle: 'Релизы',
-      contactReleaseText: 'Обложка, название, год, исполнитель и ссылки на площадки.',
-      contactButton: 'К релизам',
-      footer: 'рутс-регги, инди-регги, симфония внутри трека',
+      contactVkText: 'Сообщество CHECKago',
+      contactReleaseTitle: '',
+      contactReleaseText: 'По сотрудничеству, прессе и площадкам.',
+      contactButton: 'Написать',
+      footer: 'рутс-регги · инди · симфония внутри трека',
     },
     releases: [
       {
@@ -165,7 +164,12 @@ function sortAnnouncements(list) {
   return [...active, ...archived]
 }
 
-function publicAnnouncement(item) {
+function publicAnnouncement(item, releases) {
+  const release = (releases || []).find((entry) => (
+    entry.id === item.releaseId || (item.publicId && entry.publicId === item.publicId)
+  ))
+  const allowed = new Set(['yandex', 'vkmusic', 'zvuk'])
+  const links = (release?.links || []).filter((link) => allowed.has(link.platform))
   return {
     id: item.id,
     title: item.title,
@@ -176,6 +180,7 @@ function publicAnnouncement(item) {
     text: item.text,
     demo: item.demo || '',
     releaseId: item.publicId,
+    links,
     archived: Boolean(item.archived),
   }
 }
@@ -188,21 +193,25 @@ function publicRelease(release) {
     year: release.year,
     tracks: release.tracks,
     cover: release.cover,
+    blurb: release.blurb || '',
     links: release.links,
     sort: release.sort,
   }
 }
 
 function publicDb(data) {
-  const visible = (data.releases || []).filter((release) => (
+  const allReleases = data.releases || []
+  const visible = allReleases.filter((release) => (
     !release.draft && release.publicId && (release.visibleWithoutAnnouncement || release.revealed)
   ))
   const profile = withDefaults(data.profile)
-  const linked = (data.releases || []).find((release) => (
+  const linked = allReleases.find((release) => (
     release.publicId && release.publicId === profile.upcomingReleaseId && !release.draft
   ))
   if (linked) profile.upcomingTracks = linked.tracks || 1
-  const announcements = sortAnnouncements(data.announcements || []).filter((item) => item.at).map(publicAnnouncement)
+  const announcements = sortAnnouncements(data.announcements || [])
+    .filter((item) => item.at)
+    .map((item) => publicAnnouncement(item, allReleases))
   return { profile, releases: sortReleases(visible).map(publicRelease), announcements }
 }
 
@@ -278,6 +287,12 @@ function cleanProfile(input) {
   if (text(input?.yandexUrl, 500) && !yandexUrl) return { error: 'Проверьте ссылку Яндекс.Музыки' }
   const zvukUrl = normalizeUrl(input?.zvukUrl)
   if (text(input?.zvukUrl, 500) && !zvukUrl) return { error: 'Проверьте ссылку Звука' }
+  const winkUrl = normalizeUrl(input?.winkUrl)
+  if (text(input?.winkUrl, 500) && !winkUrl) return { error: 'Проверьте ссылку WINK Music' }
+  const mtsUrl = normalizeUrl(input?.mtsUrl)
+  if (text(input?.mtsUrl, 500) && !mtsUrl) return { error: 'Проверьте ссылку МТС Music' }
+  const contactEmail = text(input?.contactEmail, 120)
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Проверьте email' }
   const portrait = cleanSrc(input?.portrait)
   if (text(input?.portrait, 500) && portrait === null) return { error: 'Проверьте портрет' }
   const shots = cleanPictures(input?.shots)
@@ -306,11 +321,16 @@ function cleanProfile(input) {
       yandexUrl: yandexUrl || '',
       zvukButton: text(input?.zvukButton, 80),
       zvukUrl: zvukUrl || '',
+      winkButton: text(input?.winkButton, 80),
+      winkUrl: winkUrl || '',
+      mtsButton: text(input?.mtsButton, 80),
+      mtsUrl: mtsUrl || '',
       releasesButton: text(input?.releasesButton, 80),
-      navSound: text(input?.navSound, 40) || 'Звук',
+      navSound: text(input?.navSound, 40) || 'Музыка',
       navReleases: text(input?.navReleases, 40) || 'Релизы',
       navCovers: text(input?.navCovers, 40) || 'Обложки',
-      navContact: text(input?.navContact, 40) || 'Контакты',
+      navContact: text(input?.navContact, 40) || 'Контакт',
+      navListen: text(input?.navListen, 40) || 'Слушать',
       menuVkUrl: menuVkUrl || '',
       menuVkIcon: cleanIcon(input?.menuVkIcon),
       facts: cleanPairs(input?.facts, 6),
@@ -318,9 +338,10 @@ function cleanProfile(input) {
       upcomingTitle: text(input?.upcomingTitle, 120),
       upcomingText: text(input?.upcomingText, 300),
       upcomingAt,
-      upcomingLabel: text(input?.upcomingLabel, 40) || 'До выхода',
+      upcomingLabel: text(input?.upcomingLabel, 40) || 'До релиза',
       upcomingCover: upcomingCover || '',
       upcomingReleaseId,
+      featuredListenLabel: text(input?.featuredListenLabel, 80) || 'Слушать сейчас',
       portrait: portrait || '',
       portraitAlt: text(input?.portraitAlt, 200),
       soundKicker: text(input?.soundKicker, 80),
@@ -328,12 +349,16 @@ function cleanProfile(input) {
       sounds: cleanPairs(input?.sounds, 8),
       shots: shots.pictures,
       coversKicker: text(input?.coversKicker, 80),
+      coversLead: text(input?.coversLead, 200),
       covers: covers.pictures,
       releasesKicker: text(input?.releasesKicker, 80) || 'Релизы',
       releasesEmpty: text(input?.releasesEmpty, 300),
       aboutKicker: text(input?.aboutKicker, 80),
       about: text(input?.about, 2000),
+      listenKicker: text(input?.listenKicker, 80) || 'Слушать',
+      followKicker: text(input?.followKicker, 80) || 'Следить',
       contactKicker: text(input?.contactKicker, 80),
+      contactEmail,
       contactVkTitle: text(input?.contactVkTitle, 80),
       contactVkText: text(input?.contactVkText, 300),
       contactReleaseTitle: text(input?.contactReleaseTitle, 80),
@@ -374,7 +399,7 @@ function cleanRelease(input, cover) {
   if (!cover) return { error: 'Добавьте обложку' }
   const links = cleanLinks(input?.links)
   if (links.error) return links
-  return { release: { title, artist, year, tracks, releasedAt, cover, links: links.links } }
+  return { release: { title, artist, year, tracks, releasedAt, cover, blurb: text(input?.blurb, 200), links: links.links } }
 }
 
 function signToken() {
