@@ -672,7 +672,7 @@ export default function Home() {
                 </a>
               )}
               {contactBtn && contactBtnIsReleases && (
-                <a className="btn btn-ghost" href="#releases">{contactBtn}</a>
+                <a className="btn btn-primary" href="#releases">{contactBtn}</a>
               )}
             </div>
           </section>
