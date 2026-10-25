@@ -58,6 +58,10 @@ export type Profile = {
   contactReleaseTitle: string
   contactReleaseText: string
   contactButton: string
+  contactMaxUrl: string
+  contactMaxText: string
+  contactTelegramUrl: string
+  contactTelegramText: string
   footer: string
   vkUrl: string
 }

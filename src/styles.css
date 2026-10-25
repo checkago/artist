@@ -142,8 +142,13 @@ img { max-width: 100%; }
   font-weight: 500;
 }
 .nav-links a:hover { background: rgba(255, 255, 255, 0.06); color: white; }
-.nav-listen {
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: 8px;
+}
+.nav-listen {
   text-decoration: none;
   color: white;
   padding: 9px 16px;
@@ -164,9 +169,25 @@ img { max-width: 100%; }
   text-decoration: none;
   background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
+  color: white;
+  flex-shrink: 0;
 }
-.icon-btn { background: linear-gradient(180deg, #e879f9, #7c3aed); }
-.icon-btn i { font-size: 18px; }
+.icon-btn-tg,
+.icon-btn-max {
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+}
+.icon-btn-tg img,
+.icon-btn-max img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+  border-radius: 50%;
+}
+.icon-btn:hover { filter: brightness(1.08); }
+.icon-btn i { font-size: 18px; line-height: 1; }
 .menu-btn { display: none; }
 
 .hero { text-align: center; padding-top: 18px; }
@@ -1030,10 +1051,25 @@ h1 {
 }
 .row b { display: block; margin-bottom: 4px; }
 .row span { color: var(--muted); }
+.row.is-soon { opacity: 0.72; }
+.row-icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.row-icon span { margin: 0; }
+.contact-ico {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: block;
+  border-radius: 50%;
+}
 
 .footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   padding-top: 8px;
@@ -1041,6 +1077,27 @@ h1 {
   font-size: 14px;
 }
 .footer a { color: rgba(247, 244, 255, 0.72); }
+.footer-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  text-decoration: none;
+  opacity: 0.9;
+}
+.footer-ico:hover { opacity: 1; filter: brightness(1.08); }
+.footer-ico img {
+  width: 28px;
+  height: 28px;
+  display: block;
+  border-radius: 50%;
+}
 .to-top {
   position: fixed;
   right: 18px;
@@ -1190,7 +1247,8 @@ textarea { min-height: 110px; resize: vertical; }
     align-items: stretch;
   }
   .nav-links.open { display: flex; }
-  .nav-listen { margin-left: 0; }
+  .nav-actions { margin-left: 0; gap: 6px; }
+  .nav-listen { padding: 8px 12px; font-size: 13px; }
   .facts { display: grid; width: 100%; }
   .rail { grid-template-columns: 1fr; }
   .facts div { min-width: 0; }

@@ -87,6 +87,10 @@ function seed() {
       contactReleaseTitle: '',
       contactReleaseText: 'По сотрудничеству, прессе и площадкам.',
       contactButton: 'Написать',
+      contactMaxUrl: '',
+      contactMaxText: 'чат-бот',
+      contactTelegramUrl: '',
+      contactTelegramText: 'чат-бот',
       footer: 'рутс-регги · инди · симфония внутри трека',
     },
     releases: [
@@ -293,6 +297,10 @@ function cleanProfile(input) {
   if (text(input?.mtsUrl, 500) && !mtsUrl) return { error: 'Проверьте ссылку МТС Music' }
   const contactEmail = text(input?.contactEmail, 120)
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Проверьте email' }
+  const contactMaxUrl = normalizeUrl(input?.contactMaxUrl)
+  if (text(input?.contactMaxUrl, 500) && !contactMaxUrl) return { error: 'Проверьте ссылку MAX' }
+  const contactTelegramUrl = normalizeUrl(input?.contactTelegramUrl)
+  if (text(input?.contactTelegramUrl, 500) && !contactTelegramUrl) return { error: 'Проверьте ссылку Telegram' }
   const portrait = cleanSrc(input?.portrait)
   if (text(input?.portrait, 500) && portrait === null) return { error: 'Проверьте портрет' }
   const shots = cleanPictures(input?.shots)
@@ -364,6 +372,10 @@ function cleanProfile(input) {
       contactReleaseTitle: text(input?.contactReleaseTitle, 80),
       contactReleaseText: text(input?.contactReleaseText, 300),
       contactButton: text(input?.contactButton, 80),
+      contactMaxUrl: contactMaxUrl || '',
+      contactMaxText: text(input?.contactMaxText, 120) || 'чат-бот',
+      contactTelegramUrl: contactTelegramUrl || '',
+      contactTelegramText: text(input?.contactTelegramText, 120) || 'чат-бот',
       footer: text(input?.footer, 200),
       vkUrl: vkUrl || '',
     },

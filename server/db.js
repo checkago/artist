@@ -53,6 +53,10 @@ const profileFields = [
   ['contactReleaseTitle', 'contact_release_title'],
   ['contactReleaseText', 'contact_release_text'],
   ['contactButton', 'contact_button'],
+  ['contactMaxUrl', 'contact_max_url'],
+  ['contactMaxText', 'contact_max_text'],
+  ['contactTelegramUrl', 'contact_telegram_url'],
+  ['contactTelegramText', 'contact_telegram_text'],
   ['featuredListenLabel', 'featured_listen_label'],
   ['footer', 'footer'],
   ['vkUrl', 'vk_url'],
@@ -214,6 +218,10 @@ export function openDatabase({ dataDir, dataFile, seed }) {
   addColumn('profile', 'follow_kicker', "TEXT NOT NULL DEFAULT ''")
   addColumn('profile', 'contact_email', "TEXT NOT NULL DEFAULT ''")
   addColumn('profile', 'featured_listen_label', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'contact_max_url', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'contact_max_text', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'contact_telegram_url', "TEXT NOT NULL DEFAULT ''")
+  addColumn('profile', 'contact_telegram_text', "TEXT NOT NULL DEFAULT ''")
   db.prepare(`INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('version', '1')`).run()
 
   const columns = profileFields.map((field) => field[1])

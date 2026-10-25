@@ -394,11 +394,20 @@ export default function Home() {
   const mts = profile ? safeHref(profile.mtsUrl) : undefined
   const email = profile?.contactEmail?.trim() || ''
   const mailHref = email ? `mailto:${email}` : undefined
+  const maxHref = profile ? safeHref(profile.contactMaxUrl || '') : undefined
+  const telegramHref = profile ? safeHref(profile.contactTelegramUrl || '') : undefined
   const showSound = profile && profile.steps.length > 0
   const showArtist = profile && (profile.aboutKicker || profile.about || profile.portrait)
   const showListen = Boolean(yandex || vk || zvuk || wink || mts)
   const showFollow = Boolean(followVk)
-  const showContact = Boolean(email || followVk || profile?.contactReleaseText || profile?.contactButton)
+  const writeHref = mailHref || telegramHref || maxHref || (!showFollow ? followVk : undefined)
+  const showContact = Boolean(
+    email
+    || followVk
+    || profile?.contactReleaseText
+    || profile?.contactButton
+    || profile?.contactKicker,
+  )
 
   const heroPlatforms: PlatformCta[] = []
   if (profile && yandex && profile.yandexButton) heroPlatforms.push({ key: 'yandex', href: yandex, label: profile.yandexButton, variant: 'yandex' })
@@ -434,9 +443,33 @@ export default function Home() {
           {showContact && <a href="#contact">{profile?.navContact || 'Контакт'}</a>}
         </nav>
         {profile && (
-          <a className="nav-listen" href="#listen" onClick={() => setOpen(false)}>
-            {profile.navListen || 'Слушать'}
-          </a>
+          <div className="nav-actions">
+            <a
+              className="icon-btn icon-btn-max"
+              href={maxHref || '#contact'}
+              target={maxHref ? '_blank' : undefined}
+              rel={maxHref ? 'noreferrer' : undefined}
+              aria-label="MAX"
+              title="MAX"
+              onClick={() => setOpen(false)}
+            >
+              <img src="/media/max.png" alt="" width="40" height="40" />
+            </a>
+            <a
+              className="icon-btn icon-btn-tg"
+              href={telegramHref || '#contact'}
+              target={telegramHref ? '_blank' : undefined}
+              rel={telegramHref ? 'noreferrer' : undefined}
+              aria-label="Telegram"
+              title="Telegram"
+              onClick={() => setOpen(false)}
+            >
+              <img src="/media/telegram.png" alt="" width="40" height="40" />
+            </a>
+            <a className="nav-listen" href="#listen" onClick={() => setOpen(false)}>
+              {profile.navListen || 'Слушать'}
+            </a>
+          </div>
         )}
         <button className="menu-btn" type="button" aria-label="Меню" onClick={() => setOpen((value) => !value)}>
           <span aria-hidden="true">{open ? '×' : '☰'}</span>
@@ -592,14 +625,36 @@ export default function Home() {
                   <span>{email}</span>
                 </a>
               )}
+              {maxHref ? (
+                <a className="row row-icon" href={maxHref} target="_blank" rel="noreferrer">
+                  <img className="contact-ico" src="/media/max.png" alt="" width="36" height="36" />
+                  <span>{profile.contactMaxText || 'чат-бот'}</span>
+                </a>
+              ) : (
+                <div className="row row-icon is-soon">
+                  <img className="contact-ico" src="/media/max.png" alt="" width="36" height="36" />
+                  <span>{profile.contactMaxText || 'чат-бот'} · скоро</span>
+                </div>
+              )}
+              {telegramHref ? (
+                <a className="row row-icon" href={telegramHref} target="_blank" rel="noreferrer">
+                  <img className="contact-ico" src="/media/telegram.png" alt="" width="36" height="36" />
+                  <span>{profile.contactTelegramText || 'чат-бот'}</span>
+                </a>
+              ) : (
+                <div className="row row-icon is-soon">
+                  <img className="contact-ico" src="/media/telegram.png" alt="" width="36" height="36" />
+                  <span>{profile.contactTelegramText || 'чат-бот'} · скоро</span>
+                </div>
+              )}
               {!showFollow && followVk && (
                 <a className="row" href={followVk} target="_blank" rel="noreferrer">
                   <b>{profile.contactVkTitle || 'ВКонтакте'}</b>
                   <span>{profile.contactVkText || 'сообщество CHECKago'}</span>
                 </a>
               )}
-              {profile.contactButton && (mailHref || (!showFollow && followVk)) && (
-                <a className="btn btn-primary" href={mailHref || followVk} target={mailHref ? undefined : '_blank'} rel={mailHref ? undefined : 'noreferrer'}>
+              {profile.contactButton && writeHref && (
+                <a className="btn btn-primary" href={writeHref} target={mailHref ? undefined : '_blank'} rel={mailHref ? undefined : 'noreferrer'}>
                   {profile.contactButton}
                 </a>
               )}
@@ -609,6 +664,26 @@ export default function Home() {
 
         <footer className="wrap footer">
           <span>© {new Date().getFullYear()} {profile?.name || 'CHECKago'}{profile?.footer ? ` · ${profile.footer}` : ''}</span>
+          <div className="footer-icons">
+            <a
+              className="footer-ico"
+              href={maxHref || '#contact'}
+              target={maxHref ? '_blank' : undefined}
+              rel={maxHref ? 'noreferrer' : undefined}
+              aria-label="MAX"
+            >
+              <img src="/media/max.png" alt="" width="28" height="28" />
+            </a>
+            <a
+              className="footer-ico"
+              href={telegramHref || '#contact'}
+              target={telegramHref ? '_blank' : undefined}
+              rel={telegramHref ? 'noreferrer' : undefined}
+              aria-label="Telegram"
+            >
+              <img src="/media/telegram.png" alt="" width="28" height="28" />
+            </a>
+          </div>
         </footer>
       </main>
       <button

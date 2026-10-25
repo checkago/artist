@@ -810,6 +810,11 @@ export default function Admin() {
               <label>Заголовок «Следить»<input value={profile.followKicker || ''} onChange={(event) => patchProfile({ followKicker: event.target.value })} /></label>
               <label>Заголовок «Контакт»<input value={profile.contactKicker} onChange={(event) => patchProfile({ contactKicker: event.target.value })} /></label>
               <label className="wide">Email<input type="email" value={profile.contactEmail || ''} onChange={(event) => patchProfile({ contactEmail: event.target.value })} placeholder="you@example.com" /></label>
+              <label className="wide">Ссылка MAX<input value={profile.contactMaxUrl || ''} onChange={(event) => patchProfile({ contactMaxUrl: event.target.value })} placeholder="https://max.ru/..." /></label>
+              <label>Подпись MAX<input value={profile.contactMaxText || ''} onChange={(event) => patchProfile({ contactMaxText: event.target.value })} placeholder="чат-бот" /></label>
+              <label className="wide">Ссылка Telegram<input value={profile.contactTelegramUrl || ''} onChange={(event) => patchProfile({ contactTelegramUrl: event.target.value })} placeholder="https://t.me/..." /></label>
+              <label>Подпись Telegram<input value={profile.contactTelegramText || ''} onChange={(event) => patchProfile({ contactTelegramText: event.target.value })} placeholder="чат-бот" /></label>
+              <p className="note wide">Пустые ссылки на сайте показываются как «скоро».</p>
               <label>Карточка ВКонтакте<input value={profile.contactVkTitle} onChange={(event) => patchProfile({ contactVkTitle: event.target.value })} /></label>
               <label>Текст карточки<textarea value={profile.contactVkText} onChange={(event) => patchProfile({ contactVkText: event.target.value })} /></label>
               <label className="wide">Текст контакта<textarea value={profile.contactReleaseText} onChange={(event) => patchProfile({ contactReleaseText: event.target.value })} /></label>
