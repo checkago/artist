@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Picture, type Profile, type Release, type ReleaseLink } from '../api'
+import { trackChatBot, trackDemoPlay, trackListenBlock, trackListenPlatform, trackReleaseListen } from '../metrika'
 
 function releaseDate(value: string) {
   const date = new Date(value)
@@ -71,11 +72,13 @@ function formatDemoTime(seconds: number) {
 
 function DemoPlayer({ src }: { src: string }) {
   const audio = useRef<HTMLAudioElement | null>(null)
+  const trackedPlay = useRef(false)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
+    trackedPlay.current = false
     const node = audio.current
     if (!node) return
     const onTime = () => setCurrent(node.currentTime || 0)
@@ -87,6 +90,10 @@ function DemoPlayer({ src }: { src: string }) {
         if (item !== node) item.pause()
       })
       setPlaying(true)
+      if (!trackedPlay.current) {
+        trackedPlay.current = true
+        trackDemoPlay()
+      }
     }
     node.addEventListener('timeupdate', onTime)
     node.addEventListener('loadedmetadata', onMeta)
@@ -249,7 +256,13 @@ function ReleaseRail({
             {listenLinks.length > 0 ? (
               <div className="rail-listen-links">
                 {listenLinks.map((link) => (
-                  <a key={`${link.platform}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
+                  <a
+                    key={`${link.platform}-${link.href}`}
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => trackListenPlatform(link.platform)}
+                  >
                     {platformLabel(link.platform)}
                   </a>
                 ))}
@@ -342,7 +355,10 @@ function ListenMenu({ links }: { links: { platform: string; href: string }[] }) 
               href={link.href}
               target="_blank"
               rel="noreferrer"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                trackReleaseListen(link.platform)
+                setOpen(false)
+              }}
             >
               {platformLabel(link.platform)}
             </a>
@@ -495,7 +511,10 @@ export default function Home() {
               rel={maxHref ? 'noreferrer' : undefined}
               aria-label="MAX"
               title="MAX"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                if (maxHref) trackChatBot('max')
+                setOpen(false)
+              }}
             >
               <img src="/media/max.png" alt="" width="40" height="40" />
             </a>
@@ -506,7 +525,10 @@ export default function Home() {
               rel={telegramHref ? 'noreferrer' : undefined}
               aria-label="Telegram"
               title="Telegram"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                if (telegramHref) trackChatBot('telegram')
+                setOpen(false)
+              }}
             >
               <img src="/media/telegram.png" alt="" width="40" height="40" />
             </a>
@@ -542,6 +564,7 @@ export default function Home() {
                     href={item.href}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => trackListenPlatform(item.variant === 'vk' ? 'vk' : item.variant)}
                   >
                     <span className="vk-cta-ico" aria-hidden="true">
                       {item.variant === 'yandex' && (
@@ -649,7 +672,14 @@ export default function Home() {
                   mts: 'btn-mts',
                 } as Record<string, string>)[item.key] || 'btn-ghost'
                 return (
-                  <a className={`btn ${tone}`} key={item.key} href={item.href} target="_blank" rel="noreferrer">
+                  <a
+                    className={`btn ${tone}`}
+                    key={item.key}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => trackListenBlock(item.key)}
+                  >
                     {item.label}
                   </a>
                 )
@@ -698,7 +728,14 @@ export default function Home() {
                   <span className="contact-messengers-label">Мессенджеры</span>
                   <div className="contact-bots">
                     {maxHref ? (
-                      <a className="contact-bot" href={maxHref} target="_blank" rel="noreferrer" aria-label="MAX">
+                      <a
+                        className="contact-bot"
+                        href={maxHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="MAX"
+                        onClick={() => trackChatBot('max')}
+                      >
                         <img src="/media/max.png" alt="" width="44" height="44" />
                       </a>
                     ) : (
@@ -707,7 +744,14 @@ export default function Home() {
                       </span>
                     )}
                     {telegramHref ? (
-                      <a className="contact-bot" href={telegramHref} target="_blank" rel="noreferrer" aria-label="Telegram">
+                      <a
+                        className="contact-bot"
+                        href={telegramHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Telegram"
+                        onClick={() => trackChatBot('telegram')}
+                      >
                         <img src="/media/telegram.png" alt="" width="44" height="44" />
                       </a>
                     ) : (

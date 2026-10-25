@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getSite, safeHref, type Profile } from '../api'
+import { trackListenPlatform } from '../metrika'
 
 type ErrorPageProps = { code?: number }
 type ErrorCopy = { title: string; text: string }
@@ -124,7 +125,14 @@ export default function ErrorPage({ code }: ErrorPageProps) {
               <p className="error-platforms-label">Пока страница чиллит — лови треки:</p>
               <div className="platform-list">
                 {platforms.map((item) => (
-                  <a className={`btn ${item.tone}`} key={item.key} href={item.href} target="_blank" rel="noreferrer">
+                  <a
+                    className={`btn ${item.tone}`}
+                    key={item.key}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => trackListenPlatform(item.key)}
+                  >
                     {item.label}
                   </a>
                 ))}

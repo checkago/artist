@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Profile, type Release } from '../api'
+import { trackChatBot, trackListenBlock, trackReleaseListen } from '../metrika'
 
 type TabId = 'home' | 'listen' | 'releases' | 'artist' | 'contact' | 'chat'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
@@ -203,7 +204,10 @@ function MaListenMenu({ links }: { links: { platform: string; href: string }[] }
               href={link.href}
               target="_blank"
               rel="noreferrer"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                trackReleaseListen(link.platform)
+                setOpen(false)
+              }}
             >
               {platformLabel(link.platform)}
             </a>
@@ -393,7 +397,14 @@ export default function MiniApp() {
             <p className="ma-kicker">Площадки</p>
             <div className="ma-list">
               {listen.map((item) => (
-                <a key={item.key} className={`ma-link ma-link-${item.tone}`} href={item.href} target="_blank" rel="noreferrer">
+                <a
+                  key={item.key}
+                  className={`ma-link ma-link-${item.tone}`}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackListenBlock(item.key)}
+                >
                   <span>{item.label}</span>
                   <span aria-hidden="true">→</span>
                 </a>
@@ -466,13 +477,25 @@ export default function MiniApp() {
                 </a>
               )}
               {maxHref && (
-                <a className="ma-link ma-link-soft" href={maxHref} target="_blank" rel="noreferrer">
+                <a
+                  className="ma-link ma-link-soft"
+                  href={maxHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackChatBot('max')}
+                >
                   <span><strong>MAX</strong><small>{profile.contactMaxText || 'чат-бот'}</small></span>
                   <span aria-hidden="true">→</span>
                 </a>
               )}
               {telegramHref && (
-                <a className="ma-link ma-link-soft" href={telegramHref} target="_blank" rel="noreferrer">
+                <a
+                  className="ma-link ma-link-soft"
+                  href={telegramHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackChatBot('telegram')}
+                >
                   <span><strong>Telegram</strong><small>{profile.contactTelegramText || 'чат-бот'}</small></span>
                   <span aria-hidden="true">→</span>
                 </a>
