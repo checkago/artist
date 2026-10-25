@@ -893,6 +893,18 @@ h1 {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
+.btn-wink {
+  color: #fff;
+  background: #ff5b21;
+  border: 1px solid #ff5b21;
+}
+.btn-wink:hover { filter: brightness(1.06); }
+.btn-mts {
+  color: #fff;
+  background: #ff0032;
+  border: 1px solid #ff0032;
+}
+.btn-mts:hover { filter: brightness(1.06); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 .btn-small { min-height: 38px; padding: 0 12px; font-size: 14px; }
 .btn-danger { background: rgba(244, 63, 94, 0.14); color: #fecdd3; border: 1px solid rgba(244, 63, 94, 0.35); }
@@ -1474,6 +1486,16 @@ body.mini-root::before { display: none; }
   color: #142016;
   background: linear-gradient(135deg, #d8ff6a, #7dff45 58%, #3ccc4a);
 }
+.ma-link-wink {
+  color: #fff;
+  background: #ff5b21;
+  border-color: #ff5b21;
+}
+.ma-link-mts {
+  color: #fff;
+  background: #ff0032;
+  border-color: #ff0032;
+}
 .ma-link-soft { background: var(--ma-card); font-weight: 600; }
 
 .ma-card {
@@ -1596,21 +1618,37 @@ body.mini-root::before { display: none; }
 }
 .ma-nav button {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   justify-items: center;
   border: 0;
   background: transparent;
-  color: rgba(247, 244, 255, 0.48);
+  color: rgba(167, 139, 250, 0.55);
   font-size: 10px;
   font-weight: 600;
   padding: 6px 2px;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
-.ma-nav button span { font-size: 14px; line-height: 1; }
+.ma-nav-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  color: inherit;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.ma-nav-ico svg { display: block; }
 .ma-nav button.is-on {
-  color: white;
-  background: rgba(167, 139, 250, 0.18);
+  color: #ebd9ff;
+  background: rgba(124, 58, 237, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.35);
+}
+.ma-nav button.is-on .ma-nav-ico {
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #e879f9 70%, #c84dd8);
+  box-shadow: 0 0 12px rgba(232, 121, 249, 0.35);
 }
 
 @media (min-width: 480px) {

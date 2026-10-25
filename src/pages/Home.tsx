@@ -599,7 +599,15 @@ export default function Home() {
             <p className="kicker">{profile.listenKicker || 'Слушать'}</p>
             <div className="platform-list">
               {listenPlatforms.map((item) => (
-                <a className="btn btn-ghost" key={item.key} href={item.href} target="_blank" rel="noreferrer">{item.label}</a>
+                <a
+                  className={`btn ${item.key === 'wink' ? 'btn-wink' : item.key === 'mts' ? 'btn-mts' : 'btn-ghost'}`}
+                  key={item.key}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {item.label}
+                </a>
               ))}
             </div>
           </section>

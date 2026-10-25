@@ -60,9 +60,9 @@ function seed() {
       zvukButton: 'Слушать в Звуке',
       zvukUrl: 'https://zvuk.com/artist/214839684',
       winkButton: 'WINK Music',
-      winkUrl: '',
+      winkUrl: 'https://music.wink.ru/release/53489018',
       mtsButton: 'МТС Music',
-      mtsUrl: '',
+      mtsUrl: 'https://music.mts.ru/album/44514912',
       releasesButton: 'Все релизы',
       navSound: 'Музыка',
       navReleases: 'Релизы',
@@ -592,29 +592,109 @@ app.get('/api/site', (_req, res) => {
   res.json(publicDb(revealDue(readDb())))
 })
 
-function buildChatSystemPrompt(data) {
+let vkDigestCache = { at: 0, url: '', text: '' }
+
+async function fetchVkDigest(url) {
+  const href = normalizeUrl(url)
+  if (!href) return ''
+  const now = Date.now()
+  if (vkDigestCache.url === href && now - vkDigestCache.at < 15 * 60 * 1000 && vkDigestCache.text) {
+    return vkDigestCache.text
+  }
+  try {
+    const response = await fetch(href, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CHECKagoBot/1.0)',
+        'Accept-Language': 'ru-RU,ru;q=0.9',
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!response.ok) return vkDigestCache.url === href ? vkDigestCache.text : ''
+    const html = await response.text()
+    const pick = (pattern) => {
+      const match = pattern.exec(html)
+      return match?.[1] ? match[1].replace(/\s+/g, ' ').trim() : ''
+    }
+    const title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+      || pick(/<title[^>]*>([^<]+)<\/title>/i)
+    const description = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
+      || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+    const plain = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 1800)
+    const digest = [
+      title && `Заголовок VK: ${title}`,
+      description && `Описание VK: ${description}`,
+      plain && `Фрагмент страницы VK: ${plain}`,
+    ].filter(Boolean).join('\n')
+    if (digest) vkDigestCache = { at: now, url: href, text: digest }
+    return digest
+  } catch {
+    return vkDigestCache.url === href ? vkDigestCache.text : ''
+  }
+}
+
+function buildChatSystemPrompt(data, vkDigest = '') {
   const profile = withDefaults(data.profile)
-  const releases = sortReleases((data.releases || []).filter((release) => (
-    !release.draft && release.publicId && (release.visibleWithoutAnnouncement || release.revealed)
-  )))
+  const releases = sortReleases(data.releases || [])
+  const announcements = sortAnnouncements(data.announcements || [])
   const lines = [
     'Ты — CHECKago Bot, голос артиста CHECKago.',
-    'Стиль: коротко, по-русски, тепло, без канцелярита и без выдуманных фактов.',
-    'Жанр: рутс-регги, инди, симфония внутри грува.',
-    `Лид сайта: ${profile.lead || '—'}`,
-    `Об артисте: ${(profile.about || '').replace(/\n+/g, ' ')}`,
-    'Релизы на сайте:',
+    'Стиль: коротко, по-русски, тепло, без канцелярита.',
+    'Не выдумывай даты, ссылки и факты. Опирайся на данные админки сайта ниже и на снимок страницы ВКонтакте.',
+    'Если в админке и на VK нет ответа — скажи прямо и предложи разделы Слушать / Релизы / Связь или сообщество VK.',
+    'Черновики релизов не выдавай как уже вышедшие.',
+    '',
+    '=== Данные админки сайта ===',
+    `Имя: ${profile.name}`,
+    `Бейдж: ${profile.badge || '—'}`,
+    `Заголовок: ${profile.titleWhite || ''} ${profile.titleGradient || ''}`.trim(),
+    `Лид: ${profile.lead || '—'}`,
+    `Об артисте: ${(profile.about || '').replace(/\n+/g, ' ') || '—'}`,
+    `О звуке: ${(profile.steps || []).map((step) => `${step.title}: ${step.text}`).join(' | ') || '—'}`,
+    `Яндекс.Музыка: ${profile.yandexUrl || '—'}`,
+    `VK Музыка / артист: ${profile.vkUrl || '—'}`,
+    `Звук: ${profile.zvukUrl || '—'}`,
+    `WINK Music: ${profile.winkUrl || '—'}`,
+    `МТС Music: ${profile.mtsUrl || '—'}`,
+    `Сообщество VK: ${profile.menuVkUrl || '—'}`,
+    `Email: ${profile.contactEmail || '—'}`,
+    `MAX: ${profile.contactMaxUrl || '—'}`,
+    `Telegram: ${profile.contactTelegramUrl || '—'}`,
+    `Текст контакта: ${profile.contactReleaseText || '—'}`,
+    '',
+    'Релизы из админки:',
   ]
-  for (const release of releases.slice(0, 12)) {
+  for (const release of releases.slice(0, 20)) {
     const links = (release.links || []).map((link) => `${link.platform}: ${link.url}`).join('; ')
-    lines.push(`- «${release.title}» (${release.year}, ${release.tracks || 1} тр.): ${release.blurb || 'без подписи'}. Ссылки: ${links || 'пока нет'}`)
+    const flags = [
+      release.draft ? 'черновик' : 'не черновик',
+      release.visibleWithoutAnnouncement ? 'виден без анонса' : '',
+      release.revealed ? 'раскрыт' : '',
+    ].filter(Boolean).join(', ')
+    lines.push(
+      `- «${release.title}» (${release.year}, треков: ${release.tracks || 1}, ${flags}). ${release.blurb || ''}`
+      + ` Дата: ${release.releasedAt || '—'}. Ссылки: ${links || 'нет'}.`,
+    )
   }
-  if (profile.yandexUrl) lines.push(`Яндекс.Музыка артиста: ${profile.yandexUrl}`)
-  if (profile.vkUrl) lines.push(`VK Музыка / артист: ${profile.vkUrl}`)
-  if (profile.zvukUrl) lines.push(`Звук: ${profile.zvukUrl}`)
-  if (profile.contactEmail) lines.push(`Email: ${profile.contactEmail}`)
-  if (profile.menuVkUrl) lines.push(`Сообщество VK: ${profile.menuVkUrl}`)
-  lines.push('Если не знаешь факт — скажи прямо и предложи раздел Слушать / Релизы / Связь.')
+  lines.push('', 'Анонсы из админки:')
+  if (announcements.length === 0) lines.push('- нет')
+  for (const item of announcements.slice(0, 12)) {
+    lines.push(
+      `- «${item.title}» · ${item.at || 'без даты'} · ${item.archived ? 'архив' : 'активен'}: ${(item.text || '').replace(/\n+/g, ' ')}`,
+    )
+  }
+  lines.push('', '=== ВКонтакте ===')
+  lines.push(`URL сообщества: ${profile.menuVkUrl || 'не задан'}`)
+  lines.push('Задача: для новостей, постов, атмосферы и свежих упоминаний используй снимок страницы VK ниже. Если снимок пуст — направь пользователя в сообщество по ссылке.')
+  lines.push(vkDigest || 'Снимок страницы VK сейчас недоступен.')
   return lines.join('\n')
 }
 
@@ -637,11 +717,13 @@ app.post('/api/chat', asyncRoute(async (req, res) => {
     return
   }
   const data = revealDue(readDb())
+  const profile = withDefaults(data.profile)
+  const vkDigest = await fetchVkDigest(profile.menuVkUrl || profile.vkUrl || '')
   const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
   const payload = {
     model,
     messages: [
-      { role: 'system', content: buildChatSystemPrompt(data) },
+      { role: 'system', content: buildChatSystemPrompt(data, vkDigest) },
       ...cleaned,
     ],
     stream: false,

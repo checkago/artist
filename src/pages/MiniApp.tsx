@@ -4,12 +4,72 @@ import { getSite, platformLabel, releaseKind, safeHref, type Profile, type Relea
 type TabId = 'home' | 'listen' | 'releases' | 'artist' | 'contact' | 'chat'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 
-const TABS: { id: Exclude<TabId, 'home'>; label: string; icon: string }[] = [
-  { id: 'listen', label: 'Слушать', icon: '▶' },
-  { id: 'releases', label: 'Релизы', icon: '◎' },
-  { id: 'artist', label: 'Артист', icon: '◇' },
-  { id: 'contact', label: 'Связь', icon: '@' },
-  { id: 'chat', label: 'Чат', icon: '✦' },
+function NavIcon({ name }: { name: TabId }) {
+  const common = {
+    viewBox: '0 0 24 24',
+    width: 20,
+    height: 20,
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.75,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true as const,
+  }
+  switch (name) {
+    case 'home':
+      return (
+        <svg {...common}>
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
+        </svg>
+      )
+    case 'listen':
+      return (
+        <svg {...common}>
+          <path d="M4 13a4 4 0 0 0 4 4h1v-8H8a4 4 0 0 0-4 4z" />
+          <path d="M20 13a4 4 0 0 1-4 4h-1v-8h1a4 4 0 0 1 4 4z" />
+          <path d="M9 9v6a3 3 0 0 0 6 0V9" />
+        </svg>
+      )
+    case 'releases':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="2.25" />
+          <path d="M12 4v2.5M12 17.5V20M4 12h2.5M17.5 12H20" />
+        </svg>
+      )
+    case 'artist':
+      return (
+        <svg {...common}>
+          <path d="M12 3.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3z" />
+          <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0" />
+          <path d="M12 17v3.5M9 20.5h6" />
+        </svg>
+      )
+    case 'contact':
+      return (
+        <svg {...common}>
+          <path d="M4.5 7.5A2.5 2.5 0 0 1 7 5h10a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5z" />
+          <path d="m5 8 7 5 7-5" />
+        </svg>
+      )
+    case 'chat':
+      return (
+        <svg {...common}>
+          <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H11l-3.5 3.2V15H7.5A2.5 2.5 0 0 1 5 12.5z" />
+          <path d="M9 9h6M9 12h3.5" />
+        </svg>
+      )
+  }
+}
+
+const TABS: { id: Exclude<TabId, 'home'>; label: string }[] = [
+  { id: 'listen', label: 'Слушать' },
+  { id: 'releases', label: 'Релизы' },
+  { id: 'artist', label: 'Артист' },
+  { id: 'contact', label: 'Связь' },
+  { id: 'chat', label: 'Чат' },
 ]
 
 function paras(text: string) {
@@ -97,8 +157,8 @@ export default function MiniApp() {
     yandex && { key: 'yandex', href: yandex, label: 'Яндекс.Музыка', tone: 'ym' },
     vk && { key: 'vk', href: vk, label: 'VK Музыка', tone: 'vk' },
     zvuk && { key: 'zvuk', href: zvuk, label: 'Звук', tone: 'zvuk' },
-    wink && { key: 'wink', href: wink, label: profile?.winkButton || 'WINK Music', tone: 'soft' },
-    mts && { key: 'mts', href: mts, label: profile?.mtsButton || 'МТС Music', tone: 'soft' },
+    wink && { key: 'wink', href: wink, label: profile?.winkButton || 'WINK Music', tone: 'wink' },
+    mts && { key: 'mts', href: mts, label: profile?.mtsButton || 'МТС Music', tone: 'mts' },
   ].filter(Boolean) as { key: string; href: string; label: string; tone: string }[]
 
   async function sendChat(event: FormEvent) {
@@ -165,7 +225,7 @@ export default function MiniApp() {
             <div className="ma-grid">
               {TABS.map((item) => (
                 <button key={item.id} className="ma-tile" type="button" onClick={() => setTab(item.id)}>
-                  <span className="ma-tile-ico" aria-hidden="true">{item.icon}</span>
+                  <span className="ma-tile-ico"><NavIcon name={item.id} /></span>
                   <span>{item.label}</span>
                 </button>
               ))}
@@ -297,12 +357,12 @@ export default function MiniApp() {
 
       <nav className="ma-nav" aria-label="Разделы">
         <button className={tab === 'home' ? 'is-on' : undefined} type="button" onClick={() => setTab('home')}>
-          <span aria-hidden="true">⌂</span>
+          <span className="ma-nav-ico"><NavIcon name="home" /></span>
           Старт
         </button>
         {TABS.map((item) => (
           <button key={item.id} className={tab === item.id ? 'is-on' : undefined} type="button" onClick={() => setTab(item.id)}>
-            <span aria-hidden="true">{item.icon}</span>
+            <span className="ma-nav-ico"><NavIcon name={item.id} /></span>
             {item.label}
           </button>
         ))}
