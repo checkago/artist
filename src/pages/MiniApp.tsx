@@ -186,7 +186,7 @@ export default function MiniApp() {
   const zvuk = profile ? safeHref(profile.zvukUrl) : undefined
   const wink = profile ? safeHref(profile.winkUrl) : undefined
   const mts = profile ? safeHref(profile.mtsUrl) : undefined
-  const followVk = profile ? safeHref(profile.menuVkUrl) : undefined
+  const followVk = profile ? safeHref(profile.menuVkUrl) || safeHref(profile.vkUrl) : undefined
   const email = profile?.contactEmail?.trim() || ''
   const maxHref = profile ? safeHref(profile.contactMaxUrl || '') : undefined
   const telegramHref = profile ? safeHref(profile.contactTelegramUrl || '') : undefined

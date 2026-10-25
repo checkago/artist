@@ -641,18 +641,83 @@ async function fetchVkDigest(url) {
   }
 }
 
+function formatRuDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}.${month}.${year}`
+}
+
+function releaseBucket(release, now = Date.now()) {
+  const when = release.releasedAt ? new Date(release.releasedAt).getTime() : Number.NaN
+  const dateText = formatRuDate(release.releasedAt)
+  if (release.draft) {
+    return {
+      bucket: 'planned',
+      status: dateText ? `готовится, планируемая дата ${dateText}` : 'готовится, дата уточняется',
+    }
+  }
+  if (Number.isFinite(when) && when > now) {
+    return {
+      bucket: 'upcoming',
+      status: dateText ? `ожидается, выход ${dateText}` : 'ожидается',
+    }
+  }
+  return {
+    bucket: 'released',
+    status: dateText ? `вышел ${dateText}` : 'вышел',
+  }
+}
+
+function announcementBucket(item, now = Date.now()) {
+  const when = item.at ? new Date(item.at).getTime() : Number.NaN
+  const dateText = formatRuDate(item.at)
+  if (item.archived || (Number.isFinite(when) && when <= now)) {
+    return {
+      bucket: 'released',
+      status: dateText ? `вышел ${dateText}` : 'вышел',
+    }
+  }
+  if (Number.isFinite(when) && when > now) {
+    return {
+      bucket: 'upcoming',
+      status: dateText ? `ожидается, выход ${dateText}` : 'ожидается',
+    }
+  }
+  return { bucket: 'upcoming', status: 'ожидается' }
+}
+
 function buildChatSystemPrompt(data, vkDigest = '') {
   const profile = withDefaults(data.profile)
+  const now = Date.now()
+  const today = formatRuDate(new Date(now).toISOString())
   const releases = sortReleases(data.releases || [])
   const announcements = sortAnnouncements(data.announcements || [])
+  const grouped = { released: [], upcoming: [], planned: [] }
+  for (const release of releases.slice(0, 30)) {
+    const info = releaseBucket(release, now)
+    const links = (release.links || []).map((link) => `${link.platform}: ${link.url}`).join('; ')
+    const kind = Number(release.tracks) > 1 ? `${release.tracks} треков` : 'сингл'
+    grouped[info.bucket].push(
+      `- «${release.title}» — ${kind}, ${info.status}. ${release.blurb || ''}`.trim()
+      + (links ? ` Ссылки: ${links}.` : ''),
+    )
+  }
   const lines = [
     'Ты — CHECKago Bot, голос артиста CHECKago.',
     'Стиль: коротко, по-русски, тепло, без канцелярита.',
-    'Не выдумывай даты, ссылки и факты. Опирайся на данные админки сайта ниже и на снимок страницы ВКонтакте.',
-    'Если в админке и на VK нет ответа — скажи прямо и предложи разделы Слушать / Релизы / Связь или сообщество VK.',
-    'Черновики релизов не выдавай как уже вышедшие.',
+    `Сегодня на сервере: ${today}. Сравнивай любые даты выхода только с этой датой.`,
+    'Не выдумывай даты, ссылки и факты. Опирайся на каталог сайта ниже и на снимок страницы ВКонтакте.',
+    'Если в каталоге и на VK нет ответа — скажи прямо и предложи разделы Слушать / Релизы / Связь или сообщество VK.',
+    'Про релизы говори только так: вышедшие, ожидаемые и планируемые.',
+    'Никогда не говори слова «админка», «админ», «черновик», «из админки».',
+    'Релиз с будущей датой — ожидаемый, ещё не вышел. Не пиши, что он уже вышел.',
+    'Планируемый релиз формулируй: «готовится, планируемая дата ДД.ММ.ГГГГ» (или «дата уточняется», если даты нет).',
     '',
-    '=== Данные админки сайта ===',
+    '=== Каталог сайта ===',
     `Имя: ${profile.name}`,
     `Бейдж: ${profile.badge || '—'}`,
     `Заголовок: ${profile.titleWhite || ''} ${profile.titleGradient || ''}`.trim(),
@@ -670,25 +735,22 @@ function buildChatSystemPrompt(data, vkDigest = '') {
     `Telegram: ${profile.contactTelegramUrl || '—'}`,
     `Текст контакта: ${profile.contactReleaseText || '—'}`,
     '',
-    'Релизы из админки:',
+    'Вышедшие релизы:',
+    ...(grouped.released.length ? grouped.released : ['- нет']),
+    '',
+    'Ожидаемые релизы:',
+    ...(grouped.upcoming.length ? grouped.upcoming : ['- нет']),
+    '',
+    'Планируемые релизы:',
+    ...(grouped.planned.length ? grouped.planned : ['- нет']),
+    '',
+    'Анонсы на сайте:',
   ]
-  for (const release of releases.slice(0, 20)) {
-    const links = (release.links || []).map((link) => `${link.platform}: ${link.url}`).join('; ')
-    const flags = [
-      release.draft ? 'черновик' : 'не черновик',
-      release.visibleWithoutAnnouncement ? 'виден без анонса' : '',
-      release.revealed ? 'раскрыт' : '',
-    ].filter(Boolean).join(', ')
-    lines.push(
-      `- «${release.title}» (${release.year}, треков: ${release.tracks || 1}, ${flags}). ${release.blurb || ''}`
-      + ` Дата: ${release.releasedAt || '—'}. Ссылки: ${links || 'нет'}.`,
-    )
-  }
-  lines.push('', 'Анонсы из админки:')
   if (announcements.length === 0) lines.push('- нет')
   for (const item of announcements.slice(0, 12)) {
+    const info = announcementBucket(item, now)
     lines.push(
-      `- «${item.title}» · ${item.at || 'без даты'} · ${item.archived ? 'архив' : 'активен'}: ${(item.text || '').replace(/\n+/g, ' ')}`,
+      `- «${item.title}» — ${info.status}: ${(item.text || '').replace(/\n+/g, ' ')}`,
     )
   }
   lines.push('', '=== ВКонтакте ===')
