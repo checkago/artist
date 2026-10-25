@@ -4,19 +4,16 @@ import { getSite, platformLabel, releaseKind, safeHref, type Profile, type Relea
 type TabId = 'home' | 'listen' | 'releases' | 'artist' | 'contact' | 'chat'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'home', label: 'Старт' },
-  { id: 'listen', label: 'Слушать' },
-  { id: 'releases', label: 'Релизы' },
-  { id: 'artist', label: 'Артист' },
-  { id: 'contact', label: 'Связь' },
-  { id: 'chat', label: 'Чат' },
+const TABS: { id: Exclude<TabId, 'home'>; label: string; icon: string }[] = [
+  { id: 'listen', label: 'Слушать', icon: '▶' },
+  { id: 'releases', label: 'Релизы', icon: '◎' },
+  { id: 'artist', label: 'Артист', icon: '◇' },
+  { id: 'contact', label: 'Связь', icon: '@' },
+  { id: 'chat', label: 'Чат', icon: '✦' },
 ]
 
-function AboutText({ text }: { text: string }) {
-  return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean).map((part, index) => (
-    <p key={index}>{part}</p>
-  ))
+function paras(text: string) {
+  return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean)
 }
 
 function useWebApp() {
@@ -29,15 +26,15 @@ function useWebApp() {
     max.src = 'https://dev.max.ru/js/max-web-app.js'
     max.async = true
     document.head.appendChild(max)
-
     const ready = () => {
-      const telegram = (window as Window & { Telegram?: { WebApp?: { ready: () => void; expand: () => void; setHeaderColor?: (c: string) => void; setBackgroundColor?: (c: string) => void } } }).Telegram?.WebApp
+      const telegram = (window as Window & {
+        Telegram?: { WebApp?: { ready: () => void; expand: () => void; setHeaderColor?: (c: string) => void; setBackgroundColor?: (c: string) => void } }
+      }).Telegram?.WebApp
       telegram?.ready()
       telegram?.expand?.()
-      telegram?.setHeaderColor?.('#08080f')
-      telegram?.setBackgroundColor?.('#08080f')
-      const webApp = (window as Window & { WebApp?: { ready?: () => void } }).WebApp
-      webApp?.ready?.()
+      telegram?.setHeaderColor?.('#0b0914')
+      telegram?.setBackgroundColor?.('#0b0914')
+      ;(window as Window & { WebApp?: { ready?: () => void } }).WebApp?.ready?.()
     }
     tg.addEventListener('load', ready)
     max.addEventListener('load', ready)
@@ -55,14 +52,17 @@ export default function MiniApp() {
   const [releases, setReleases] = useState<Release[]>([])
   const [error, setError] = useState('')
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'assistant', text: 'Привет. Я CHECKago Bot — про релизы, площадки, тексты и музыку. Спрашивай.' },
+    { role: 'assistant', text: 'Привет. Я CHECKago Bot — релизы, площадки, тексты и музыка. Спрашивай.' },
   ])
   const [draft, setDraft] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
   const [chatError, setChatError] = useState('')
-  const chatEnd = useRef<HTMLDivElement | null>(null)
+  const logRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
+    document.documentElement.classList.add('mini-root')
+    document.body.classList.add('mini-root')
     document.title = 'CHECKago Bot'
     getSite()
       .then((data) => {
@@ -70,11 +70,18 @@ export default function MiniApp() {
         setReleases(data.releases)
       })
       .catch((reason: Error) => setError(reason.message))
+    return () => {
+      document.documentElement.classList.remove('mini-root')
+      document.body.classList.remove('mini-root')
+    }
   }, [])
 
   useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, tab])
+    if (tab !== 'chat') return
+    const node = logRef.current
+    if (node) node.scrollTop = node.scrollHeight
+    inputRef.current?.focus()
+  }, [messages, chatBusy, tab])
 
   const yandex = profile ? safeHref(profile.yandexUrl) : undefined
   const vk = profile ? safeHref(profile.vkUrl) : undefined
@@ -86,29 +93,29 @@ export default function MiniApp() {
   const maxHref = profile ? safeHref(profile.contactMaxUrl || '') : undefined
   const telegramHref = profile ? safeHref(profile.contactTelegramUrl || '') : undefined
 
-  const listenLinks = [
-    yandex && { key: 'yandex', href: yandex, label: 'Яндекс.Музыка', kind: 'ym' as const },
-    vk && { key: 'vk', href: vk, label: 'VK Музыка', kind: 'vk' as const },
-    zvuk && { key: 'zvuk', href: zvuk, label: 'Звук', kind: 'zvuk' as const },
-    wink && { key: 'wink', href: wink, label: profile?.winkButton || 'WINK Music', kind: 'plain' as const },
-    mts && { key: 'mts', href: mts, label: profile?.mtsButton || 'МТС Music', kind: 'plain' as const },
-  ].filter(Boolean) as { key: string; href: string; label: string; kind: 'ym' | 'vk' | 'zvuk' | 'plain' }[]
+  const listen = [
+    yandex && { key: 'yandex', href: yandex, label: 'Яндекс.Музыка', tone: 'ym' },
+    vk && { key: 'vk', href: vk, label: 'VK Музыка', tone: 'vk' },
+    zvuk && { key: 'zvuk', href: zvuk, label: 'Звук', tone: 'zvuk' },
+    wink && { key: 'wink', href: wink, label: profile?.winkButton || 'WINK Music', tone: 'soft' },
+    mts && { key: 'mts', href: mts, label: profile?.mtsButton || 'МТС Music', tone: 'soft' },
+  ].filter(Boolean) as { key: string; href: string; label: string; tone: string }[]
 
-  async function onChat(event: FormEvent) {
+  async function sendChat(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
     if (!text || chatBusy) return
     setDraft('')
     setChatError('')
-    const next = [...messages, { role: 'user' as const, text }]
-    setMessages(next)
+    const history = [...messages, { role: 'user' as const, text }]
+    setMessages(history)
     setChatBusy(true)
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: next.map((item) => ({ role: item.role, content: item.text })),
+          messages: history.map((item) => ({ role: item.role, content: item.text })),
         }),
       })
       const data = (await response.json().catch(() => ({}))) as { reply?: string; error?: string }
@@ -121,96 +128,88 @@ export default function MiniApp() {
     }
   }
 
-  return (
-    <div className="mini">
-      <div className="bg-media" aria-hidden="true">
-        <video ref={(node) => { if (node) node.muted = true }} autoPlay muted loop playsInline preload="auto" src="/media/bg.webm" />
-      </div>
+  const title = {
+    home: 'CHECKago',
+    listen: 'Слушать',
+    releases: 'Релизы',
+    artist: 'Артист',
+    contact: 'Связь',
+    chat: 'Чат',
+  }[tab]
 
-      <header className="mini-top">
-        <a className="logo" href="/app">
-          <span className="logo-mark">{profile?.logoMark || 'CK'}</span>
-          {profile?.name || 'CHECKago'}
-        </a>
-        <a className="mini-site" href="/" target="_blank" rel="noreferrer">Сайт</a>
+  return (
+    <div className="ma">
+      <header className="ma-bar">
+        <button className="ma-brand" type="button" onClick={() => setTab('home')}>
+          <span className="ma-mark">{profile?.logoMark || 'CK'}</span>
+          <span>{title}</span>
+        </button>
+        {profile?.badge && tab === 'home' && <span className="ma-badge">{profile.badge}</span>}
       </header>
 
-      <main className="mini-main">
-        {error && <p className="error">{error}</p>}
-        {!profile && !error && <p className="status">Загрузка</p>}
+      <div className={tab === 'chat' ? 'ma-body is-chat' : 'ma-body'}>
+        {error && <p className="ma-error">{error}</p>}
+        {!profile && !error && <p className="ma-muted">Загрузка…</p>}
 
         {profile && tab === 'home' && (
-          <section className="mini-panel mini-hero">
-            {profile.badge && <p className="badge"><i />{profile.badge}</p>}
-            <h1>
-              {profile.titleWhite}
-              {profile.titleGradient && <span className="grad" data-text={profile.titleGradient}>{profile.titleGradient}</span>}
+          <section className="ma-screen">
+            <p className="ma-kicker">Мини-приложение</p>
+            <h1 className="ma-title">
+              {profile.titleWhite}{' '}
+              <span className="ma-grad">{profile.titleGradient}</span>
             </h1>
-            <p className="lead">{profile.lead}</p>
-            <p className="mini-bot-lead">
-              CHECKago Bot — на каких площадках слушать релизы, что за треки и о чём тексты. Подскажет анонсы, ответит по сотрудничеству и просто поговорит о музыке.
+            <p className="ma-text">{profile.lead}</p>
+            <p className="ma-text ma-dim">
+              На каких площадках слушать релизы, что за треки и о чём тексты. Анонсы, сотрудничество и живой чат.
             </p>
-            <div className="mini-actions">
-              <button className="vk-cta" type="button" onClick={() => setTab('listen')}>
-                <span className="vk-cta-txt"><b>Слушать</b></span>
-                <svg className="vk-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </button>
-              <button className="btn btn-ghost" type="button" onClick={() => setTab('chat')}>В чат</button>
-            </div>
-            <div className="mini-quick">
-              {TABS.filter((item) => item.id !== 'home').map((item) => (
-                <button key={item.id} className="mini-chip" type="button" onClick={() => setTab(item.id)}>{item.label}</button>
+            <div className="ma-grid">
+              {TABS.map((item) => (
+                <button key={item.id} className="ma-tile" type="button" onClick={() => setTab(item.id)}>
+                  <span className="ma-tile-ico" aria-hidden="true">{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
               ))}
             </div>
           </section>
         )}
 
         {profile && tab === 'listen' && (
-          <section className="mini-panel">
-            <p className="kicker">{profile.listenKicker || 'Слушать'}</p>
-            <div className="mini-stack">
-              {listenLinks.map((item) => (
-                <a
-                  key={item.key}
-                  className={item.kind === 'ym' ? 'vk-cta ym-cta' : item.kind === 'zvuk' ? 'vk-cta zvuk-cta' : item.kind === 'vk' ? 'vk-cta' : 'btn btn-ghost'}
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {item.kind !== 'plain' ? (
-                    <>
-                      <span className="vk-cta-txt"><b>{item.label}</b></span>
-                      <svg className="vk-cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                    </>
-                  ) : item.label}
+          <section className="ma-screen">
+            <p className="ma-kicker">Площадки</p>
+            <div className="ma-list">
+              {listen.map((item) => (
+                <a key={item.key} className={`ma-link ma-link-${item.tone}`} href={item.href} target="_blank" rel="noreferrer">
+                  <span>{item.label}</span>
+                  <span aria-hidden="true">→</span>
                 </a>
               ))}
-              {listenLinks.length === 0 && <p className="note">Ссылки на площадки появятся здесь.</p>}
+              {listen.length === 0 && <p className="ma-muted">Ссылки появятся позже.</p>}
             </div>
           </section>
         )}
 
         {profile && tab === 'releases' && (
-          <section className="mini-panel">
-            <p className="kicker">{profile.releasesKicker || 'Релизы'}</p>
-            <div className="mini-releases">
-              {releases.length === 0 && <div className="empty">{profile.releasesEmpty || 'Пока пусто.'}</div>}
+          <section className="ma-screen">
+            <p className="ma-kicker">Каталог</p>
+            <div className="ma-list">
+              {releases.length === 0 && <p className="ma-muted">{profile.releasesEmpty || 'Пока пусто.'}</p>}
               {releases.map((release) => {
-                const primary = release.links.map((link) => ({ ...link, href: safeHref(link.url) })).find((link) => link.href)
+                const primary = release.links
+                  .map((link) => ({ ...link, href: safeHref(link.url) }))
+                  .find((link) => link.href)
                 return (
-                  <article className="mini-release" key={release.id}>
+                  <article className="ma-card" key={release.id}>
                     <img src={release.cover} alt="" />
-                    <div>
-                      <h3>{release.title}</h3>
-                      <p className="release-kind">{releaseKind(release.tracks)}</p>
-                      <p className="release-meta">{release.artist} · {release.year}</p>
-                      {release.blurb && <p className="release-blurb">{release.blurb}</p>}
+                    <div className="ma-card-body">
+                      <h2>{release.title}</h2>
+                      <p className="ma-meta">{releaseKind(release.tracks)} · {release.year}</p>
+                      {release.blurb && <p className="ma-dim">{release.blurb}</p>}
                       {primary?.href ? (
-                        <a className="btn btn-primary btn-small" href={primary.href} target="_blank" rel="noreferrer">
+                        <a className="ma-mini-btn" href={primary.href} target="_blank" rel="noreferrer">
                           Слушать · {platformLabel(primary.platform)}
                         </a>
                       ) : (
-                        <p className="release-soon">Скоро</p>
+                        <span className="ma-soon">Скоро</span>
                       )}
                     </div>
                   </article>
@@ -221,99 +220,89 @@ export default function MiniApp() {
         )}
 
         {profile && tab === 'artist' && (
-          <section className="mini-panel about">
-            <p className="kicker">{profile.aboutKicker || 'Артист'}</p>
-            <h2>{profile.name}</h2>
-            {profile.about && <AboutText text={profile.about} />}
-            {profile.portrait && (
-              <figure className="shot artist-portrait">
-                <img src={profile.portrait} alt={profile.portraitAlt} />
-              </figure>
-            )}
+          <section className="ma-screen">
+            <p className="ma-kicker">{profile.aboutKicker || 'Артист'}</p>
+            <h1 className="ma-title">{profile.name}</h1>
+            {paras(profile.about).map((part, index) => (
+              <p className="ma-text" key={index}>{part}</p>
+            ))}
+            {profile.portrait && <img className="ma-portrait" src={profile.portrait} alt={profile.portraitAlt} />}
           </section>
         )}
 
         {profile && tab === 'contact' && (
-          <section className="mini-panel">
-            <p className="kicker">{profile.contactKicker || 'Контакт'}</p>
-            {profile.contactReleaseText && <p className="section-lead">{profile.contactReleaseText}</p>}
-            <div className="contact-card">
-              <div className="contact-primary">
-                {email ? (
-                  <a className="contact-email" href={`mailto:${email}`}>
-                    <span className="contact-email-action">Написать</span>
-                    <span className="contact-email-addr">{email}</span>
-                  </a>
-                ) : (
-                  <p className="contact-hint">По сотрудничеству и прессе — через мессенджеры ниже.</p>
-                )}
-              </div>
-              <div className="contact-messengers" role="group" aria-label="Мессенджеры">
-                <span className="contact-messengers-label">Мессенджеры</span>
-                <div className="contact-bots">
-                  {maxHref ? (
-                    <a className="contact-bot" href={maxHref} target="_blank" rel="noreferrer" aria-label="MAX">
-                      <img src="/media/max.png" alt="" width="44" height="44" />
-                    </a>
-                  ) : (
-                    <span className="contact-bot is-soon" title="Скоро"><img src="/media/max.png" alt="" width="44" height="44" /></span>
-                  )}
-                  {telegramHref ? (
-                    <a className="contact-bot" href={telegramHref} target="_blank" rel="noreferrer" aria-label="Telegram">
-                      <img src="/media/telegram.png" alt="" width="44" height="44" />
-                    </a>
-                  ) : (
-                    <span className="contact-bot is-soon" title="Скоро"><img src="/media/telegram.png" alt="" width="44" height="44" /></span>
-                  )}
-                </div>
-              </div>
+          <section className="ma-screen">
+            <p className="ma-kicker">{profile.contactKicker || 'Связь'}</p>
+            {profile.contactReleaseText && <p className="ma-text">{profile.contactReleaseText}</p>}
+            <div className="ma-list">
+              {email && (
+                <a className="ma-link ma-link-soft" href={`mailto:${email}`}>
+                  <span>
+                    <strong>Email</strong>
+                    <small>{email}</small>
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
+              {maxHref && (
+                <a className="ma-link ma-link-soft" href={maxHref} target="_blank" rel="noreferrer">
+                  <span><strong>MAX</strong><small>{profile.contactMaxText || 'чат-бот'}</small></span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
+              {telegramHref && (
+                <a className="ma-link ma-link-soft" href={telegramHref} target="_blank" rel="noreferrer">
+                  <span><strong>Telegram</strong><small>{profile.contactTelegramText || 'чат-бот'}</small></span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
+              {followVk && (
+                <a className="ma-link ma-link-soft" href={followVk} target="_blank" rel="noreferrer">
+                  <span><strong>{profile.contactVkTitle || 'ВКонтакте'}</strong><small>{profile.contactVkText || 'сообщество'}</small></span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
             </div>
-            {followVk && (
-              <a className="row" href={followVk} target="_blank" rel="noreferrer" style={{ marginTop: 14 }}>
-                <b>{profile.contactVkTitle || 'ВКонтакте'}</b>
-                <span>{profile.contactVkText || 'новые треки и обложки'}</span>
-              </a>
-            )}
           </section>
         )}
 
         {tab === 'chat' && (
-          <section className="mini-panel mini-chat">
-            <p className="kicker">Чат</p>
-            <div className="mini-chat-log">
+          <section className="ma-chat">
+            <div className="ma-chat-log" ref={logRef}>
               {messages.map((item, index) => (
-                <div className={item.role === 'user' ? 'mini-bubble is-user' : 'mini-bubble is-bot'} key={`${item.role}-${index}`}>
+                <div className={item.role === 'user' ? 'ma-msg is-user' : 'ma-msg is-bot'} key={`${item.role}-${index}`}>
                   {item.text}
                 </div>
               ))}
-              {chatBusy && <div className="mini-bubble is-bot is-typing">Печатает…</div>}
-              <div ref={chatEnd} />
+              {chatBusy && <div className="ma-msg is-bot is-wait">Печатает…</div>}
             </div>
-            {chatError && <p className="error">{chatError}</p>}
-            <form className="mini-chat-form" onSubmit={onChat}>
+            {chatError && <p className="ma-error">{chatError}</p>}
+            <form className="ma-chat-form" onSubmit={sendChat}>
               <input
+                ref={inputRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Спроси про трек, площадку или смысл…"
+                placeholder="Спроси про трек или площадку…"
                 maxLength={1200}
                 disabled={chatBusy}
+                enterKeyHint="send"
               />
-              <button className="btn btn-primary btn-small" type="submit" disabled={chatBusy || !draft.trim()}>
-                Отправить
+              <button type="submit" disabled={chatBusy || !draft.trim()} aria-label="Отправить">
+                ↑
               </button>
             </form>
           </section>
         )}
-      </main>
+      </div>
 
-      <nav className="mini-nav" aria-label="Разделы">
+      <nav className="ma-nav" aria-label="Разделы">
+        <button className={tab === 'home' ? 'is-on' : undefined} type="button" onClick={() => setTab('home')}>
+          <span aria-hidden="true">⌂</span>
+          Старт
+        </button>
         {TABS.map((item) => (
-          <button
-            key={item.id}
-            className={tab === item.id ? 'mini-nav-btn is-active' : 'mini-nav-btn'}
-            type="button"
-            onClick={() => setTab(item.id)}
-          >
+          <button key={item.id} className={tab === item.id ? 'is-on' : undefined} type="button" onClick={() => setTab(item.id)}>
+            <span aria-hidden="true">{item.icon}</span>
             {item.label}
           </button>
         ))}
