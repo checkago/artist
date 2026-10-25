@@ -1083,11 +1083,15 @@ if (serveWeb) {
     process.exit(1)
   }
   app.use(express.static(distDir))
+  const spaRoutes = new Set(['/', '/admin', '/app', '/404', '/403', '/500', '/502', '/503'])
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
       next()
       return
     }
+    const clean = req.path.replace(/\/+$/, '') || '/'
+    if (!spaRoutes.has(clean)) res.status(404)
+    else if (/^\/(40[034]|50[023])$/.test(clean)) res.status(Number(clean.slice(1)))
     res.sendFile(path.join(distDir, 'index.html'))
   })
 }
