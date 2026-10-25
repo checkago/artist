@@ -739,19 +739,21 @@ h1 {
   transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
 }
 .ym-cta {
+  color: #142016;
   background:
-    radial-gradient(120% 140% at 12% -30%, rgba(254, 209, 0, 0.72), transparent 46%),
-    linear-gradient(135deg, #fed100 0%, #009b3a 46%, #04140c 100%);
+    radial-gradient(120% 140% at 12% -30%, rgba(254, 209, 0, 0.82), transparent 52%),
+    linear-gradient(135deg, #ffe34a 0%, #fed100 42%, #c5d420 62%, #009b3a 78%, #04140c 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 238, 0, 0.45),
+    inset 0 1px 0 rgba(255, 238, 0, 0.55),
     inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    0 12px 30px -8px rgba(0, 155, 58, 0.9),
-    0 0 0 4px rgba(254, 209, 0, 0.14);
+    0 12px 30px -8px rgba(254, 209, 0, 0.55),
+    0 0 0 4px rgba(254, 209, 0, 0.2);
 }
 .ym-cta .vk-cta-ico {
   background: #110503;
   border-color: rgba(255, 238, 0, 0.45);
 }
+.ym-cta .vk-cta-txt b { text-shadow: none; }
 .zvuk-cta {
   color: #142016;
   background:
@@ -805,10 +807,10 @@ h1 {
 }
 .ym-cta:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 238, 0, 0.55),
+    inset 0 1px 0 rgba(255, 238, 0, 0.65),
     inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    0 16px 36px -8px rgba(0, 155, 58, 0.95),
-    0 0 0 5px rgba(254, 209, 0, 0.2);
+    0 16px 36px -8px rgba(254, 209, 0, 0.7),
+    0 0 0 5px rgba(254, 209, 0, 0.28);
 }
 .zvuk-cta:hover {
   box-shadow:
@@ -848,6 +850,7 @@ h1 {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .vk-cta-arrow { flex: 0 0 auto; opacity: 0.9; transition: transform 0.2s; }
+.vk-cta:not(:has(.vk-cta-ico)) { padding-left: 14px; }
 @keyframes vk-cta-beat {
   0% { transform: scale(1); }
   5% { transform: scale(1.026); }
