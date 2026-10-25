@@ -64,6 +64,17 @@ function NavIcon({ name }: { name: TabId }) {
   }
 }
 
+function SiteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M3.5 12h17" />
+      <path d="M12 4a14 14 0 0 1 0 16" />
+      <path d="M12 4a14 14 0 0 0 0 16" />
+    </svg>
+  )
+}
+
 const TABS: { id: Exclude<TabId, 'home'>; label: string }[] = [
   { id: 'listen', label: 'Слушать' },
   { id: 'releases', label: 'Релизы' },
@@ -283,6 +294,7 @@ export default function MiniApp() {
   const email = profile?.contactEmail?.trim() || ''
   const maxHref = profile ? safeHref(profile.contactMaxUrl || '') : undefined
   const telegramHref = profile ? safeHref(profile.contactTelegramUrl || '') : undefined
+  const siteHref = typeof window !== 'undefined' ? `${window.location.origin}/` : 'https://checkago.ru/'
 
   const listen = [
     yandex && { key: 'yandex', href: yandex, label: 'Яндекс.Музыка', tone: 'ym' },
@@ -368,6 +380,10 @@ export default function MiniApp() {
                   <span>{item.label}</span>
                 </button>
               ))}
+              <a className="ma-tile ma-tile-site" href={siteHref} target="_blank" rel="noreferrer">
+                <span className="ma-tile-ico"><SiteIcon /></span>
+                <span>Сайт</span>
+              </a>
             </div>
           </section>
         )}
@@ -467,6 +483,13 @@ export default function MiniApp() {
                   <span aria-hidden="true">→</span>
                 </a>
               )}
+              <a className="ma-link ma-link-site" href={siteHref} target="_blank" rel="noreferrer">
+                <span>
+                  <strong>Официальный сайт</strong>
+                  <small>checkago.ru</small>
+                </span>
+                <span aria-hidden="true">→</span>
+              </a>
             </div>
           </section>
         )}

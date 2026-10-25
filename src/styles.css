@@ -1562,6 +1562,24 @@ body.mini-root::before { display: none; }
   background: linear-gradient(135deg, rgba(232, 121, 249, 0.35), rgba(124, 58, 237, 0.45));
   font-size: 13px;
 }
+.ma-tile-site {
+  text-decoration: none;
+  color: #fff;
+  border-color: rgba(232, 121, 249, 0.5);
+  background: linear-gradient(135deg, #7c3aed, #a78bfa 40%, #e879f9 70%, #f0abfc);
+  box-shadow: 0 0 24px rgba(232, 121, 249, 0.32);
+}
+.ma-tile-site .ma-tile-ico {
+  color: #fff;
+  background: rgba(11, 9, 20, 0.22);
+  box-shadow: none;
+}
+.ma-link-site {
+  color: #fff;
+  border-color: rgba(192, 132, 252, 0.45);
+  background: linear-gradient(135deg, #7b4fff, #c84dd8);
+}
+.ma-link-site small { color: rgba(255, 255, 255, 0.78); }
 
 .ma-list { display: grid; gap: 8px; }
 .ma-link {
