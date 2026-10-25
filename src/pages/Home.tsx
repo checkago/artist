@@ -401,6 +401,8 @@ export default function Home() {
   const showListen = Boolean(yandex || vk || zvuk || wink || mts)
   const showFollow = Boolean(followVk)
   const writeHref = mailHref || telegramHref || maxHref || (!showFollow ? followVk : undefined)
+  const contactBtn = profile?.contactButton?.trim() || ''
+  const contactBtnIsReleases = /релиз/i.test(contactBtn)
   const showContact = Boolean(
     email
     || followVk
@@ -619,44 +621,58 @@ export default function Home() {
             {profile.contactKicker && <p className="kicker">{profile.contactKicker}</p>}
             {profile.contactReleaseText && <p className="section-lead">{profile.contactReleaseText}</p>}
             <div className="contact">
-              {email && (
-                <a className="row" href={mailHref}>
-                  <b>Email</b>
-                  <span>{email}</span>
-                </a>
-              )}
-              {maxHref ? (
-                <a className="row row-icon" href={maxHref} target="_blank" rel="noreferrer">
-                  <img className="contact-ico" src="/media/max.png" alt="" width="36" height="36" />
-                  <span>{profile.contactMaxText || 'чат-бот'}</span>
-                </a>
-              ) : (
-                <div className="row row-icon is-soon">
-                  <img className="contact-ico" src="/media/max.png" alt="" width="36" height="36" />
-                  <span>{profile.contactMaxText || 'чат-бот'} · скоро</span>
+              <div className="contact-card">
+                <div className="contact-primary">
+                  {email ? (
+                    <a className="contact-email" href={mailHref}>
+                      <span className="contact-email-action">{contactBtn && !contactBtnIsReleases ? contactBtn : 'Написать'}</span>
+                      <span className="contact-email-addr">{email}</span>
+                    </a>
+                  ) : writeHref && !contactBtnIsReleases ? (
+                    <a
+                      className="btn btn-primary"
+                      href={writeHref}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {contactBtn || 'Написать'}
+                    </a>
+                  ) : (
+                    <p className="contact-hint">Почта появится здесь · пока напишите в мессенджер</p>
+                  )}
                 </div>
-              )}
-              {telegramHref ? (
-                <a className="row row-icon" href={telegramHref} target="_blank" rel="noreferrer">
-                  <img className="contact-ico" src="/media/telegram.png" alt="" width="36" height="36" />
-                  <span>{profile.contactTelegramText || 'чат-бот'}</span>
-                </a>
-              ) : (
-                <div className="row row-icon is-soon">
-                  <img className="contact-ico" src="/media/telegram.png" alt="" width="36" height="36" />
-                  <span>{profile.contactTelegramText || 'чат-бот'} · скоро</span>
+                <div className="contact-messengers" role="group" aria-label="Мессенджеры">
+                  <span className="contact-messengers-label">Мессенджеры</span>
+                  <div className="contact-bots">
+                    {maxHref ? (
+                      <a className="contact-bot" href={maxHref} target="_blank" rel="noreferrer" aria-label="MAX">
+                        <img src="/media/max.png" alt="" width="44" height="44" />
+                      </a>
+                    ) : (
+                      <span className="contact-bot is-soon" title="Скоро">
+                        <img src="/media/max.png" alt="" width="44" height="44" />
+                      </span>
+                    )}
+                    {telegramHref ? (
+                      <a className="contact-bot" href={telegramHref} target="_blank" rel="noreferrer" aria-label="Telegram">
+                        <img src="/media/telegram.png" alt="" width="44" height="44" />
+                      </a>
+                    ) : (
+                      <span className="contact-bot is-soon" title="Скоро">
+                        <img src="/media/telegram.png" alt="" width="44" height="44" />
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
               {!showFollow && followVk && (
                 <a className="row" href={followVk} target="_blank" rel="noreferrer">
                   <b>{profile.contactVkTitle || 'ВКонтакте'}</b>
                   <span>{profile.contactVkText || 'сообщество CHECKago'}</span>
                 </a>
               )}
-              {profile.contactButton && writeHref && (
-                <a className="btn btn-primary" href={writeHref} target={mailHref ? undefined : '_blank'} rel={mailHref ? undefined : 'noreferrer'}>
-                  {profile.contactButton}
-                </a>
+              {contactBtn && contactBtnIsReleases && (
+                <a className="btn btn-ghost" href="#releases">{contactBtn}</a>
               )}
             </div>
           </section>
@@ -664,26 +680,6 @@ export default function Home() {
 
         <footer className="wrap footer">
           <span>© {new Date().getFullYear()} {profile?.name || 'CHECKago'}{profile?.footer ? ` · ${profile.footer}` : ''}</span>
-          <div className="footer-icons">
-            <a
-              className="footer-ico"
-              href={maxHref || '#contact'}
-              target={maxHref ? '_blank' : undefined}
-              rel={maxHref ? 'noreferrer' : undefined}
-              aria-label="MAX"
-            >
-              <img src="/media/max.png" alt="" width="28" height="28" />
-            </a>
-            <a
-              className="footer-ico"
-              href={telegramHref || '#contact'}
-              target={telegramHref ? '_blank' : undefined}
-              rel={telegramHref ? 'noreferrer' : undefined}
-              aria-label="Telegram"
-            >
-              <img src="/media/telegram.png" alt="" width="28" height="28" />
-            </a>
-          </div>
         </footer>
       </main>
       <button
