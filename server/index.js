@@ -158,19 +158,52 @@ function withDefaults(profile = {}) {
   return next
 }
 
+/** Datetimes without TZ (e.g. 2026-10-30T00:00) are Europe/Moscow (UTC+3, no DST). */
+function parseSiteDate(value) {
+  if (!value) return Number.NaN
+  const raw = String(value).trim()
+  if (!raw) return Number.NaN
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+    const time = new Date(raw).getTime()
+    return Number.isFinite(time) ? time : Number.NaN
+  }
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/)
+  if (!match) {
+    const time = new Date(raw).getTime()
+    return Number.isFinite(time) ? time : Number.NaN
+  }
+  const iso = `${match[1]}-${match[2]}-${match[3]}T${match[4] || '00'}:${match[5] || '00'}:${match[6] || '00'}+03:00`
+  const time = new Date(iso).getTime()
+  return Number.isFinite(time) ? time : Number.NaN
+}
+
 function revealDue(data) {
   const now = Date.now()
   let releases = data.releases || []
   let releaseChanged = false
   const announcements = (data.announcements || []).map((item) => {
-    const time = new Date(item.at).getTime()
+    const time = parseSiteDate(item.at)
     if (!item.at || !Number.isFinite(time) || time > now) return item
     const next = item.archived ? item : { ...item, archived: true }
-    const index = releases.findIndex((release) => release.id === item.releaseId && !release.draft && !release.revealed)
+    const index = releases.findIndex((release) => (
+      !release.draft && (
+        release.id === item.releaseId
+        || (item.publicId && release.publicId === item.publicId)
+        || (item.releaseId && release.publicId === item.releaseId)
+      )
+    ))
     if (index >= 0) {
-      if (!releaseChanged) releases = releases.slice()
-      releases[index] = { ...releases[index], revealed: true }
-      releaseChanged = true
+      const current = releases[index]
+      if (!current.revealed || !current.visibleWithoutAnnouncement) {
+        if (!releaseChanged) releases = releases.slice()
+        releases[index] = {
+          ...current,
+          revealed: true,
+          visibleWithoutAnnouncement: true,
+          draft: false,
+        }
+        releaseChanged = true
+      }
     }
     return next
   })
@@ -232,7 +265,7 @@ function publicDb(data) {
   ))
   const upcoming = allReleases.filter((release) => {
     if (!release.releasedAt) return false
-    const time = new Date(release.releasedAt).getTime()
+    const time = parseSiteDate(release.releasedAt)
     if (!Number.isFinite(time)) return false
     if (release.draft) return true
     return time > now

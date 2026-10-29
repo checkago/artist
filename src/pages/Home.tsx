@@ -1,10 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { getSite, platformLabel, releaseKind, safeHref, type Announcement, type Picture, type Profile, type Release, type ReleaseLink } from '../api'
 import { trackChatBot, trackDemoPlay, trackListenBlock, trackListenPlatform, trackReleaseListen } from '../metrika'
 
+/** Datetimes without TZ are Europe/Moscow (UTC+3), same as server revealDue. */
 function releaseDate(value: string) {
-  const date = new Date(value)
+  const raw = value.trim()
+  if (!raw) return null
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+    const date = new Date(raw)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/)
+  if (!match) {
+    const date = new Date(raw)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const date = new Date(
+    `${match[1]}-${match[2]}-${match[3]}T${match[4] || '00'}:${match[5] || '00'}:${match[6] || '00'}+03:00`,
+  )
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+function releaseStamp(release: Release) {
+  if (release.releasedAt) {
+    const date = releaseDate(release.releasedAt)
+    if (date) return date.getTime()
+  }
+  return Date.UTC(Number(release.year) || 0, 0, 1)
 }
 
 function formatReleaseDate(date: Date) {
@@ -329,11 +352,47 @@ function Logo({ mark, name }: { mark: string; name: string }) {
 function ListenMenu({ links }: { links: { platform: string; href: string }[] }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const [coords, setCoords] = useState({ top: 0, left: 0, openUp: false, ready: false })
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords({ top: 0, left: 0, openUp: false, ready: false })
+      return
+    }
+    const place = () => {
+      const btn = btnRef.current
+      if (!btn) return
+      const rect = btn.getBoundingClientRect()
+      const listH = listRef.current?.offsetHeight || Math.min(320, 44 + links.length * 42)
+      const gap = 6
+      const openUp = rect.bottom + gap + listH > window.innerHeight - 12 && rect.top > listH + gap + 12
+      const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 208))
+      setCoords({
+        top: openUp ? rect.top - gap - listH : rect.bottom + gap,
+        left,
+        openUp,
+        ready: true,
+      })
+    }
+    place()
+    const frame = window.requestAnimationFrame(place)
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open, links.length])
 
   useEffect(() => {
     if (!open) return
     const onPointer = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return
+      setOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
@@ -348,11 +407,42 @@ function ListenMenu({ links }: { links: { platform: string; href: string }[] }) 
 
   if (links.length === 0) return null
 
+  const menu = open && createPortal(
+    <div
+      className={coords.openUp ? 'listen-menu-list is-portal is-up' : 'listen-menu-list is-portal'}
+      role="menu"
+      ref={listRef}
+      style={{
+        top: coords.top,
+        left: coords.left,
+        visibility: coords.ready ? 'visible' : 'hidden',
+      }}
+    >
+      {links.map((link) => (
+        <a
+          key={`${link.platform}-${link.href}`}
+          role="menuitem"
+          href={link.href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => {
+            trackReleaseListen(link.platform)
+            setOpen(false)
+          }}
+        >
+          {platformLabel(link.platform)}
+        </a>
+      ))}
+    </div>,
+    document.body,
+  )
+
   return (
     <div className={open ? 'listen-menu is-open' : 'listen-menu'} ref={rootRef}>
       <button
         className="btn btn-primary btn-small listen-menu-btn"
         type="button"
+        ref={btnRef}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
@@ -360,34 +450,16 @@ function ListenMenu({ links }: { links: { platform: string; href: string }[] }) 
         Слушать
         <span className="listen-menu-caret" aria-hidden="true" />
       </button>
-      {open && (
-        <div className="listen-menu-list" role="menu">
-          {links.map((link) => (
-            <a
-              key={`${link.platform}-${link.href}`}
-              role="menuitem"
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => {
-                trackReleaseListen(link.platform)
-                setOpen(false)
-              }}
-            >
-              {platformLabel(link.platform)}
-            </a>
-          ))}
-        </div>
-      )}
+      {menu}
     </div>
   )
 }
 
-function ReleaseCard({ release }: { release: Release }) {
+function ReleaseCard({ release, active = false }: { release: Release; active?: boolean }) {
   const links = usableLinks(release.links)
   const blurb = (release.blurb || '').trim()
   return (
-    <article className="release" id={`release-${release.id}`}>
+    <article className={active ? 'release is-active' : 'release'} id={`release-${release.id}`}>
       <img src={release.cover} alt={`Обложка «${release.title}»`} />
       <div>
         <h3>{release.title}</h3>
@@ -397,6 +469,149 @@ function ReleaseCard({ release }: { release: Release }) {
         {links.length > 0 ? <ListenMenu links={links} /> : <p className="release-soon">Скоро</p>}
       </div>
     </article>
+  )
+}
+
+function ReleasesRing({ releases }: { releases: Release[] }) {
+  const ordered = [...releases].sort((a, b) => releaseStamp(a) - releaseStamp(b) || a.sort - b.sort)
+  const idsKey = ordered.map((item) => item.id).join('|')
+  const latest = Math.max(0, ordered.length - 1)
+  const [active, setActive] = useState(latest)
+  const idsRef = useRef(idsKey)
+  const drag = useRef<{ x: number; from: number; moved: boolean } | null>(null)
+
+  useEffect(() => {
+    if (idsRef.current !== idsKey) {
+      idsRef.current = idsKey
+      setActive(Math.max(0, ordered.length - 1))
+      return
+    }
+    setActive((current) => Math.min(current, Math.max(0, ordered.length - 1)))
+  }, [idsKey, ordered.length])
+
+  useEffect(() => {
+    const syncHash = () => {
+      const hash = window.location.hash
+      if (!hash.startsWith('#release-')) return
+      const id = hash.slice('#release-'.length)
+      const index = ordered.findIndex((item) => item.id === id)
+      if (index >= 0) setActive(index)
+    }
+    syncHash()
+    window.addEventListener('hashchange', syncHash)
+    return () => window.removeEventListener('hashchange', syncHash)
+  }, [idsKey])
+
+  if (ordered.length === 0) return null
+
+  const go = (next: number) => {
+    const max = ordered.length - 1
+    setActive(Math.max(0, Math.min(max, next)))
+  }
+
+  return (
+    <div
+      className="releases-ring"
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          go(active - 1)
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          go(active + 1)
+        }
+      }}
+      tabIndex={0}
+      aria-roledescription="карусель"
+      aria-label="Релизы"
+    >
+      <button
+        className="releases-ring-nav is-prev"
+        type="button"
+        aria-label="Предыдущий релиз"
+        disabled={active <= 0}
+        onClick={() => go(active - 1)}
+      >
+        ‹
+      </button>
+      <div
+        className="releases-ring-stage"
+        onPointerDown={(event) => {
+          const target = event.target as HTMLElement
+          if (target.closest('a, button, .listen-menu, input, textarea, label')) return
+          drag.current = { x: event.clientX, from: active, moved: false }
+        }}
+        onPointerMove={(event) => {
+          const start = drag.current
+          if (!start || start.moved) return
+          if (Math.abs(event.clientX - start.x) < 28) return
+          start.moved = true
+        }}
+        onPointerUp={(event) => {
+          const start = drag.current
+          drag.current = null
+          if (!start?.moved) return
+          const delta = event.clientX - start.x
+          if (Math.abs(delta) < 40) return
+          go(start.from + (delta < 0 ? 1 : -1))
+        }}
+        onPointerCancel={() => {
+          drag.current = null
+        }}
+      >
+        {ordered.map((release, index) => {
+          const offset = index - active
+          const abs = Math.abs(offset)
+          const hidden = abs > 2
+          const style = {
+            '--ring-offset': String(offset),
+            '--ring-abs': String(abs),
+            zIndex: hidden ? 0 : offset === 0 ? 40 : 20 - abs,
+            opacity: hidden ? 0 : 1,
+          } as CSSProperties
+          return (
+            <div
+              key={release.id}
+              className={
+                offset === 0
+                  ? 'releases-ring-slot is-center'
+                  : offset < 0
+                    ? 'releases-ring-slot is-left'
+                    : 'releases-ring-slot is-right'
+              }
+              style={style}
+            >
+              <ReleaseCard release={release} active={offset === 0} />
+            </div>
+          )
+        })}
+      </div>
+      <button
+        className="releases-ring-nav is-next"
+        type="button"
+        aria-label="Следующий релиз"
+        disabled={active >= ordered.length - 1}
+        onClick={() => go(active + 1)}
+      >
+        ›
+      </button>
+      {ordered.length > 1 && (
+        <div className="releases-ring-dots" role="tablist" aria-label="Выбор релиза">
+          {ordered.map((release, index) => (
+            <button
+              key={release.id}
+              type="button"
+              role="tab"
+              aria-selected={index === active}
+              className={index === active ? 'is-active' : undefined}
+              aria-label={release.title}
+              onClick={() => go(index)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -626,9 +841,7 @@ export default function Home() {
           {releases.length === 0 ? (
             <div className="empty">{profile?.releasesEmpty || 'Пока пусто.'}</div>
           ) : (
-            <div className="releases">
-              {releases.map((release) => <ReleaseCard key={release.id} release={release} />)}
-            </div>
+            <ReleasesRing releases={releases} />
           )}
         </section>
 
